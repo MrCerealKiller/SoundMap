@@ -1,6 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#3F51B5</color>
-    <color name="colorPrimaryDark">#303F9F</color>
-    <color name="colorAccent">#FF4081</color>
+    <!-- Theme -->
+    <color name="colorPrimary">@color/lightBlue</color>
+    <color name="colorPrimaryDark">@color/darkBlue</color>
+    <color name="colorSecondary">@color/brightRed</color>
+    <color name="colorAccent">@color/brightRed</color>
+    <color name="colorBackground">@color/grey</color>
+
+    <!-- Primary Colour Palette -->
+    <color name="darkRed">#8b0705</color>
+    <color name="brightRed">#c71512</color>
+    <color name="grey">#dde3e5</color>
+    <color name="lightBlue">#93bbd0</color>
+    <color name="darkBlue">#567787</color>
+
+    <!-- Black >> White Colour Palette -->
+    <color name="black">#000000</color>
+    <color name="night">#0C090A</color>
+    <color name="battleshipGray">#848482</color>
+    <color name="blackEel">#463E3F</color>
+    <color name="fiftyblackEel">#50463E3F</color>
+    <color name="transparentBlackEel">#00463E3F</color>
+    <color name="white">#FFFFFF</color>
+
 </resources>

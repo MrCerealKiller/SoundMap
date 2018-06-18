@@ -27,6 +27,7 @@ dependencies {
     })
 
     compile 'com.android.support:appcompat-v7:25.3.1'
-    compile 'com.google.android.gms:play-services:10.2.1' // Google Play Services (Maps)
+    compile 'com.android.support:design:25.3.1'
+    compile 'com.google.android.gms:play-services:11.0.4' // Google Play Services (Maps)
     testCompile 'junit:junit:4.12'
 }
