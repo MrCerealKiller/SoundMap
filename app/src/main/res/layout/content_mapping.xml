@@ -11,6 +11,18 @@
         android:layout_width="match_parent"
         android:layout_height="match_parent">
 
+        <ImageButton
+            android:id="@+id/rec_badge"
+            android:contentDescription="@string/rec_badge_front"
+            android:background="@drawable/rec_badge_background"
+            android:src="@mipmap/ic_action_rec_grey"
+            android:scaleType="fitCenter"
+            android:layout_width="80dp"
+            android:layout_height="48dp"
+            android:layout_gravity="end|bottom">
+
+        </ImageButton>
+
         <Button
             android:id="@+id/menu_button"
             android:background="@mipmap/ic_settings"
