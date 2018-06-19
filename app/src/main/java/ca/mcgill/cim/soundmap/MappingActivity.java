@@ -14,12 +14,13 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-//import com.google.android.gms.maps.CameraUpdateFactory;
+import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
-//import com.google.android.gms.maps.model.LatLng;
-//import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.LatLng;
+import com.google.android.gms.maps.model.MarkerOptions;
 
 public class MappingActivity extends FragmentActivity {
 
@@ -57,6 +58,20 @@ public class MappingActivity extends FragmentActivity {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 mMap = googleMap;
+                mMap.setMapType(GoogleMap.MAP_TYPE_NORMAL);
+                mMap.getUiSettings().setCompassEnabled(false);
+                mMap.getUiSettings().setMapToolbarEnabled(false);
+                mMap.getUiSettings().setTiltGesturesEnabled(false);
+                mMap.setMinZoomPreference(17);
+                mMap.setMaxZoomPreference(25);
+                mMap.setBuildingsEnabled(false);
+                CameraPosition cameraPosition = new CameraPosition.Builder()
+                        .target(new LatLng(43.5017,-75.5673))
+                        .zoom(18)
+                        .tilt(68)
+                        .bearing(314)
+                        .build();
+                mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
             }
         });
     }
