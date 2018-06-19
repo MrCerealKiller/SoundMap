@@ -32,7 +32,6 @@ import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
-import java.sql.Time;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Timer;
@@ -87,6 +86,8 @@ public class MappingActivity extends FragmentActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mapping);
 
+        Log.d(TAG, "onCreate: Initializing the mapping activity");
+
         // Initialize Media Recorder to take audio samples and sample ADT
         mAudioSampler = new MediaRecorder();
         mSamples = new LinkedList<>();
@@ -106,13 +107,18 @@ public class MappingActivity extends FragmentActivity {
             }
         });
 
+        Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
+
         // Check to ensure Google Play Services is active and up-to-date
         if (isServicesAvailable()) {
 
             // Get user permissions for Location and Audio Recording
             getPermissions();
             if (mPermissionGranted && !mMapInitiated) {
+                Log.d(TAG, "onCreate: Creating the map");
                 initMap();
+            } else {
+                Log.d(TAG, "onCreate: Permission denied or map already initialized");
             }
         }
     }
@@ -122,10 +128,13 @@ public class MappingActivity extends FragmentActivity {
                 .findFragmentById(R.id.map);
 
         // Callback for when the Google Maps API becomes available
+        Log.d(TAG, "initMap: Created fragment; waiting for response from API");
         mapFragment.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 if (mPermissionGranted) {
+                    Log.d(TAG, "onMapReady: API is available and permission is granted");
+
                     mMap = googleMap;
 
                     // Map type normal, uses drawn polygonal maps
@@ -156,6 +165,8 @@ public class MappingActivity extends FragmentActivity {
                     mMap.setBuildingsEnabled(false);
                     mMap.setIndoorEnabled(false);
 
+                    Log.d(TAG, "onMapReady: Map created and flags set; Enabling location services");
+
                     // Recheck Permissions because android is ... thorough.
                     if (ActivityCompat.checkSelfPermission(getApplicationContext(),
                             Manifest.permission.ACCESS_FINE_LOCATION) !=
@@ -171,6 +182,8 @@ public class MappingActivity extends FragmentActivity {
                     mLastFix = System.currentTimeMillis();
                     getCurrentLocation();
 
+                    Log.d(TAG, "onMapReady: Location services enabled; Starting refresh timer");
+
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
                 }
@@ -179,6 +192,7 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void getCurrentLocation() {
+        Log.d(TAG, "getCurrentLocation: Getting current location");
         FusedLocationProviderClient fusedLocationProviderClient =
                 LocationServices.getFusedLocationProviderClient(this);
 
@@ -197,7 +211,6 @@ public class MappingActivity extends FragmentActivity {
                         long now = System.currentTimeMillis();
 
                         if (task.isSuccessful()) {
-                            Log.d(TAG, "onComplete: Localized");
                             mLastKnownLocation = (Location) task.getResult();
 
                             // Get the bearing and coordinates of the device location
@@ -214,10 +227,12 @@ public class MappingActivity extends FragmentActivity {
                             // Could not get a proper GPS fix
                             // TODO : Handle GPS Timeout
                             // TODO : Convert to persistent error message
+                            Log.d(TAG, "onComplete: GPS signal unavailable");
                             Toast.makeText(MappingActivity.this, "GPS signal unavailable",
                                     Toast.LENGTH_LONG).show();
 
                             if (Math.abs(now - mLastFix) > GPS_TIMEOUT) {
+                                Log.d(TAG, "onComplete: GPS timed out");
                                 mIsTimeout = true;
                             }
                         }
@@ -243,9 +258,12 @@ public class MappingActivity extends FragmentActivity {
 
     private void recordButtonClicked() {
         // Grab the recording status button to switch it on and off
+        Log.d(TAG, "recordButtonClicked: clicked");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
 
         if (mIsRecording) {
+            Log.d(TAG, "recordButtonClicked: Recording ON");
+
             // Clear the audio sampling event timer and make the status grey
             if (mAudioSampleTimer != null) {
                 mAudioSampleTimer.cancel();
@@ -254,6 +272,8 @@ public class MappingActivity extends FragmentActivity {
             status.setImageResource(R.mipmap.ic_action_rec_red);
             mIsRecording = false;
         } else {
+            Log.d(TAG, "recordButtonClicked: Recording OFF");
+
             // Start the audio sampling event timer and make the status red
             mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
             mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
@@ -263,7 +283,7 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void sampleAudio() {
-        Toast.makeText(getApplicationContext(), "Bloop", Toast.LENGTH_SHORT).show();
+        Log.d(TAG, "sampleAudio: Sampling");
 
         // Take a new sample and average it with the last one
         mSamples.add(mAudioSampler.getMaxAmplitude());
@@ -277,6 +297,8 @@ public class MappingActivity extends FragmentActivity {
 
     // Calculate the mean of the data set and then clear it
     private void packSamples() {
+        Log.d(TAG, "packSamples: Packing samples for transfer");
+
         int sum = 0;
         for (int i : mSamples) {
             sum += i;
@@ -318,6 +340,7 @@ public class MappingActivity extends FragmentActivity {
             if (ContextCompat.checkSelfPermission(this.getApplicationContext(),
                     permission) != PackageManager.PERMISSION_GRANTED) {
                 denied = true;
+                Log.w(TAG, "getPermissions: Permissions Not Yet Granted");
                 break;
             }
         }
@@ -350,6 +373,7 @@ public class MappingActivity extends FragmentActivity {
             // If any of the permissions were not granted nothing will proceed without the
             // permission granted flag
             if (denied) {
+                Log.w(TAG, "getPermissions: Permissions Denied");
                 Toast.makeText(this, "Permissions were not granted. The app will not proceed",
                         Toast.LENGTH_LONG).show();
             } else {
@@ -364,21 +388,21 @@ public class MappingActivity extends FragmentActivity {
 
     // Check that the Google Play Services is available and compatible
     private boolean isServicesAvailable() {
-        Log.d(TAG, "Verifying Google Play Services version and connectivity...");
+        Log.d(TAG, "isServicesAvailable: Verifying version and connectivity");
         int available = GoogleApiAvailability.getInstance()
                 .isGooglePlayServicesAvailable(MappingActivity.this);
 
         if (available == ConnectionResult.SUCCESS) {
-            Log.d(TAG, "Google Play Services successfully connected.");
+            Log.d(TAG, "isServicesAvailable: Google Play Services successfully connected.");
             return true;
         } else if (GoogleApiAvailability.getInstance().isUserResolvableError(available)) {
-            Log.d(TAG, "An error occurred, but can be resolved by the user");
+            Log.d(TAG, "isServicesAvailable: An error occurred, but can be resolved by the user");
             Dialog dialog = GoogleApiAvailability.getInstance()
                     .getErrorDialog(MappingActivity.this, available, ERROR_DIALOG_REQUEST);
             dialog.show();
             return false;
         } else {
-            Log.d(TAG, "An unresolvable error occurred with Google Play Services");
+            Log.d(TAG, "isServicesAvailable: An unresolvable error occurred");
             Toast.makeText(this, "An unresolvable error occurred with Google Play Services",
                     Toast.LENGTH_LONG).show();
             return false;
