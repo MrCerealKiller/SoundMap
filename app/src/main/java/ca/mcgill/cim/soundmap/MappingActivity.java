@@ -32,6 +32,7 @@ import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import java.io.IOException;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Timer;
@@ -77,6 +78,7 @@ public class MappingActivity extends FragmentActivity {
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
+    private String mSampleFile;
     private Queue<Integer> mSamples;
     private double mAverageIntensity = 0;
     private static final int POOL_SIZE = 110;
@@ -88,9 +90,15 @@ public class MappingActivity extends FragmentActivity {
 
         Log.d(TAG, "onCreate: Initializing the mapping activity");
 
-        // Initialize Media Recorder to take audio samples and sample ADT
-        mAudioSampler = new MediaRecorder();
+        // Initialize the Samples ADT
         mSamples = new LinkedList<>();
+
+        try {
+            mSampleFile = getExternalCacheDir().getAbsolutePath();
+            mSampleFile += "/samples.3gp";
+        } catch (NullPointerException e) {
+            Log.e(TAG, "onCreate: Error - " + e.getMessage());
+        }
 
         // Initialize Timers
         // $1 == Thread Name
@@ -262,31 +270,55 @@ public class MappingActivity extends FragmentActivity {
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
 
         if (mIsRecording) {
-            Log.d(TAG, "recordButtonClicked: Recording ON");
+            Log.d(TAG, "recordButtonClicked: Recording OFF");
 
             // Clear the audio sampling event timer and make the status grey
             if (mAudioSampleTimer != null) {
                 mAudioSampleTimer.cancel();
                 mAudioSampleTimer.purge();
             }
-            status.setImageResource(R.mipmap.ic_action_rec_red);
+
+            if (mAudioSampler != null) {
+                mAudioSampler.stop();
+                mAudioSampler.release();
+                mAudioSampler = null;
+            }
+
+            status.setImageResource(R.mipmap.ic_action_rec_grey);
             mIsRecording = false;
         } else {
-            Log.d(TAG, "recordButtonClicked: Recording OFF");
+            Log.d(TAG, "recordButtonClicked: Recording ON");
+
+            mAudioSampler = new MediaRecorder();
+            mAudioSampler.setAudioSource(MediaRecorder.AudioSource.MIC);
+            mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
+            mAudioSampler.setOutputFile(mSampleFile);
+            mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+
+            try {
+                mAudioSampler.prepare();
+            } catch (IOException e) {
+                Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
+            }
+
+            mAudioSampler.start();
 
             // Start the audio sampling event timer and make the status red
             mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
             mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
-            status.setImageResource(R.mipmap.ic_action_rec_grey);
+
+            status.setImageResource(R.mipmap.ic_action_rec_red);
             mIsRecording = true;
         }
     }
 
     private void sampleAudio() {
-        Log.d(TAG, "sampleAudio: Sampling");
-
         // Take a new sample and average it with the last one
-        mSamples.add(mAudioSampler.getMaxAmplitude());
+        if ((mAudioSampler != null) && (!mIsTimeout)) {
+            int sample = mAudioSampler.getMaxAmplitude();
+            Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
+            mSamples.add(sample);
+        }
 
         // If the sample set has reached the desired pool size,
         // pack the data into an average to transfer to the server
