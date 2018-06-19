@@ -32,6 +32,7 @@ import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
+import java.sql.Time;
 import java.util.LinkedList;
 import java.util.Queue;
 import java.util.Timer;
@@ -65,8 +66,6 @@ public class MappingActivity extends FragmentActivity {
     // Event Timers
     private Timer mLocationUpdateTimer;
     private static final int LOCATION_UPDATE_RATE = 15000; // ms
-    private Timer mGPSTimeoutTimer;
-    private static final int GPS_TIMEOUT= 60000;           // ms (1 min)
     private Timer mAudioSampleTimer;
     private static final int AUDIO_SAMPLE_RATE = 500;      // ms
 
@@ -74,6 +73,8 @@ public class MappingActivity extends FragmentActivity {
     private GoogleMap mMap;
     private Location mLastKnownLocation;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
+    private long mLastFix;
+    private static final int GPS_TIMEOUT= 60000;    // ms (1 min)
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
@@ -93,9 +94,8 @@ public class MappingActivity extends FragmentActivity {
         // Initialize Timers
         // $1 == Thread Name
         // $2 == Run as Daemon
-        mLocationUpdateTimer = new Timer("Force Local Update Timer", true);
-        mGPSTimeoutTimer = new Timer("GPS Timeout Countdown", true);
-        mAudioSampleTimer = new Timer("Set rate of audio sampling", true);
+        mLocationUpdateTimer = new Timer("GPS Update Event Timer", true);
+        mAudioSampleTimer = new Timer("Audio Sampling Event Timer", true);
 
         // Create Event Listener for the recording button
         Button recordButton = (Button) findViewById(R.id.rec_button);
@@ -168,8 +168,8 @@ public class MappingActivity extends FragmentActivity {
                     }
                     // Enable Location Services within the Google Maps API
                     mMap.setMyLocationEnabled(true);
+                    mLastFix = System.currentTimeMillis();
                     getCurrentLocation();
-                    mGPSTimeoutTimer.schedule(new GPSTimeoutTask(), 0, GPS_TIMEOUT);
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
@@ -194,6 +194,8 @@ public class MappingActivity extends FragmentActivity {
                 track.addOnCompleteListener(new OnCompleteListener() {
                     @Override
                     public void onComplete(@NonNull Task task) {
+                        long now = System.currentTimeMillis();
+
                         if (task.isSuccessful()) {
                             Log.d(TAG, "onComplete: Localized");
                             mLastKnownLocation = (Location) task.getResult();
@@ -205,17 +207,19 @@ public class MappingActivity extends FragmentActivity {
 
                             // Update the camera's position with the new location
                             updateCameraPose(latLng, bearing);
+                            mIsTimeout = false;
+                            mLastFix = now;
 
-                            // Reset GPS Timeout Timer
-                            mGPSTimeoutTimer.cancel();
-                            mGPSTimeoutTimer.purge();
-                            mGPSTimeoutTimer.schedule(new GPSTimeoutTask(), 0, GPS_TIMEOUT);
                         } else {
                             // Could not get a proper GPS fix
                             // TODO : Handle GPS Timeout
                             // TODO : Convert to persistent error message
                             Toast.makeText(MappingActivity.this, "GPS signal unavailable",
                                     Toast.LENGTH_LONG).show();
+
+                            if (Math.abs(now - mLastFix) > GPS_TIMEOUT) {
+                                mIsTimeout = true;
+                            }
                         }
                     }
                 });
@@ -243,17 +247,24 @@ public class MappingActivity extends FragmentActivity {
 
         if (mIsRecording) {
             // Clear the audio sampling event timer and make the status grey
-            mAudioSampleTimer.cancel();
-            mAudioSampleTimer.purge();
-            status.setImageResource(R.mipmap.ic_action_rec_grey);
+            if (mAudioSampleTimer != null) {
+                mAudioSampleTimer.cancel();
+                mAudioSampleTimer.purge();
+            }
+            status.setImageResource(R.mipmap.ic_action_rec_red);
+            mIsRecording = false;
         } else {
             // Start the audio sampling event timer and make the status red
+            mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
             mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
             status.setImageResource(R.mipmap.ic_action_rec_grey);
+            mIsRecording = true;
         }
     }
 
     private void sampleAudio() {
+        Toast.makeText(getApplicationContext(), "Bloop", Toast.LENGTH_SHORT).show();
+
         // Take a new sample and average it with the last one
         mSamples.add(mAudioSampler.getMaxAmplitude());
 
