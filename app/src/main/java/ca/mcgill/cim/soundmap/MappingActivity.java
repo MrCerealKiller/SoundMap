@@ -25,10 +25,12 @@ import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
-//import com.google.android.gms.maps.model.MarkerOptions;
+import com.google.android.gms.maps.model.Marker;
+import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
@@ -75,6 +77,10 @@ public class MappingActivity extends FragmentActivity {
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
     private long mLastFix;
     private static final int GPS_TIMEOUT= 60000;    // ms (1 min)
+
+    // Target Marker
+    private Marker mTarget;
+    private static final double DEFAULT_MARKER_OPACITY = 0.9;
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
@@ -226,6 +232,18 @@ public class MappingActivity extends FragmentActivity {
                             LatLng latLng = new LatLng(mLastKnownLocation.getLatitude(),
                                                        mLastKnownLocation.getLongitude());
 
+
+                            // #############################################################################
+                            // ###  DEVELOPMENT  ###########################################################
+                            // #############################################################################
+
+                            addMarker(latLng, "Target");
+
+                            // #############################################################################
+                            // #############################################################################
+                            // #############################################################################
+
+
                             // Update the camera's position with the new location
                             updateCameraPose(latLng, bearing);
                             mIsTimeout = false;
@@ -233,11 +251,9 @@ public class MappingActivity extends FragmentActivity {
 
                         } else {
                             // Could not get a proper GPS fix
-                            // TODO : Handle GPS Timeout
-                            // TODO : Convert to persistent error message
                             Log.d(TAG, "onComplete: GPS signal unavailable");
                             Toast.makeText(MappingActivity.this, "GPS signal unavailable",
-                                    Toast.LENGTH_LONG).show();
+                                    Toast.LENGTH_SHORT).show();
 
                             if (Math.abs(now - mLastFix) > GPS_TIMEOUT) {
                                 Log.d(TAG, "onComplete: GPS timed out");
@@ -262,6 +278,15 @@ public class MappingActivity extends FragmentActivity {
                 .bearing(bearing)
                 .build();
         mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+    }
+
+    private void addMarker(LatLng latLng, String desc) {
+        mTarget = mMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .title(desc)
+                .alpha((float)DEFAULT_MARKER_OPACITY)
+                .draggable(false)
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher)));
     }
 
     private void recordButtonClicked() {
