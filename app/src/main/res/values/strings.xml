@@ -1,4 +1,5 @@
 <resources>
     <string name="app_name">Sound Map</string>
     <string name="title_activity_mapping">Mapping</string>
+    <string name="rec_badge_front">Recording</string>
 </resources>
