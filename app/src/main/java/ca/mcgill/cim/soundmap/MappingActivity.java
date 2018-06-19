@@ -2,7 +2,6 @@ package ca.mcgill.cim.soundmap;
 
 //import android.*;
 import android.Manifest;
-import android.app.ActionBar;
 import android.app.Dialog;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
@@ -32,7 +31,6 @@ public class MappingActivity extends FragmentActivity {
     private static String[] PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION,
                                            Manifest.permission.RECORD_AUDIO};
 
-    private ActionBar mActionBar;
     private boolean mPermissionGranted = false;
     private boolean mMapInitiated = false;
     private GoogleMap mMap;
@@ -41,9 +39,6 @@ public class MappingActivity extends FragmentActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mapping);
-
-        mActionBar = getActionBar();
-//        mActionBar.setDisplayUseLogoEnabled(true);
 
         // TODO : Pull to an earlier screen whenever it is created
         if (isServicesAvailable()) {
