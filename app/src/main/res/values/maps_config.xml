@@ -1,6 +1,29 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="map_style">
+
+    <string name="no_poi_map">
+        [
+        {
+          \"featureType\": \"poi.business\",
+          \"elementType\": \"all\",
+          \"stylers\": [
+            {
+              \"visibility\": \"off\"
+            }
+          ]
+        },
+        {
+          \"featureType\": \"transit\",
+          \"elementType\": \"labels.icon\",
+          \"stylers\": [
+            {
+              \"visibility\": \"off\"
+            }
+          ]
+        }
+        ]
+    </string>
+    <string name="fancy_map">
         [
           {
             \"elementType\": \"geometry\",
