@@ -14,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -34,7 +35,6 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
-import java.io.InterruptedIOException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -86,6 +86,7 @@ public class MappingActivity extends FragmentActivity {
     private MediaRecorder mAudioSampler;
     private String mSampleFile;
     private Data mSamples;
+    private int mCurrentVolume = -1;
     private double mAverageIntensity = 0;
     private static final int POOL_SIZE = 110;
 
@@ -95,6 +96,8 @@ public class MappingActivity extends FragmentActivity {
     private View mVolumeBar;
     private int mVolumeBarMaxHeight;
     private int mVolumeBarSetpoint;
+    private TextView mVolumeText;
+    private boolean mIsTextVisible = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -129,8 +132,24 @@ public class MappingActivity extends FragmentActivity {
             }
         });
 
+        // Create Event Listener for the recording button
+        ImageButton recBadge = (ImageButton) findViewById(R.id.rec_badge);
+        recBadge.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mIsTextVisible) {
+                    mVolumeText.setVisibility(View.GONE);
+                    mIsTextVisible = false;
+                } else {
+                    mVolumeText.setVisibility(View.VISIBLE);
+                    mIsTextVisible = true;
+                }
+            }
+        });
+
         // Grab the volume bar object for later manipulation
         mVolumeBar = findViewById(R.id.volume_bar);
+        mVolumeText = (TextView) findViewById(R.id.volume_text);
 
         Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
@@ -332,7 +351,9 @@ public class MappingActivity extends FragmentActivity {
                 mAudioSampler = null;
             }
 
-            updateVolumeBar(0);
+            mCurrentVolume = 0;
+            updateVolumeBar();
+            updateVolumeText();
             status.setImageResource(R.mipmap.ic_action_rec_grey);
             mIsRecording = false;
         } else {
@@ -346,11 +367,13 @@ public class MappingActivity extends FragmentActivity {
 
             try {
                 mAudioSampler.prepare();
+                mAudioSampler.start();
             } catch (IOException e) {
+                Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
+                        "being used by another process.", Toast.LENGTH_SHORT).show();
                 Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
+                return;
             }
-
-            mAudioSampler.start();
 
             // Start the audio sampling event timer and make the status red
             mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
@@ -369,7 +392,9 @@ public class MappingActivity extends FragmentActivity {
             mSamples.push(sample, mLastKnownCoords);
 
             // Update the volume indicator
-            updateVolumeBar(sample);
+            mCurrentVolume = sample;
+            updateVolumeBar();
+            updateVolumeText();
         }
 
         // If the sample set has reached the desired pool size,
@@ -392,14 +417,14 @@ public class MappingActivity extends FragmentActivity {
         mSamples.clear();
     }
 
-    void updateVolumeBar(int level) {
+    void updateVolumeBar() {
         // Map the input volume to the corresponding pixel height
-        if (level > VOLUME_UPPER_BOUND) {
+        if (mCurrentVolume > VOLUME_UPPER_BOUND) {
             mVolumeBarSetpoint = mVolumeBarMaxHeight;
-        } else if (level < VOLUME_LOWER_BOUND) {
+        } else if (mCurrentVolume < VOLUME_LOWER_BOUND) {
             mVolumeBarSetpoint = 0;
         } else {
-            double ratio = (double) (level - VOLUME_LOWER_BOUND) / (double) VOLUME_UPPER_BOUND;
+            double ratio = (double) (mCurrentVolume - VOLUME_LOWER_BOUND) / (double) VOLUME_UPPER_BOUND;
             mVolumeBarSetpoint = (int)(ratio * mVolumeBarMaxHeight);
         }
 
@@ -408,6 +433,15 @@ public class MappingActivity extends FragmentActivity {
             public void run() {
                 mVolumeBar.requestLayout();
                 mVolumeBar.getLayoutParams().height = mVolumeBarSetpoint;
+            }
+        });
+    }
+
+    void updateVolumeText() {
+        // Update the text to display the audio intensity as a number
+        runOnUiThread(new Runnable() {
+            public void run() {
+                mVolumeText.setText(Integer.toString(mCurrentVolume));
             }
         });
     }
