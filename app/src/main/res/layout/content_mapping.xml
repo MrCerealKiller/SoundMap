@@ -17,7 +17,7 @@
             android:id="@+id/rec_badge"
             android:contentDescription="@string/rec_badge_front"
             android:background="@drawable/rec_badge_background"
-            android:src="@mipmap/ic_action_rec_grey"
+            android:src="@mipmap/ic_rec_badge_grey"
             android:scaleType="fitCenter"
             android:layout_width="80dp"
             android:layout_height="48dp"
@@ -43,7 +43,7 @@
 
         <Button
             android:id="@+id/rec_button"
-            android:background="@mipmap/ic_settings"
+            android:background="@mipmap/ic_button_red"
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_margin="64dp"

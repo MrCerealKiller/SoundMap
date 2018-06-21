@@ -338,7 +338,7 @@ public class MappingActivity extends FragmentActivity {
                 .title(desc)
                 .alpha((float)DEFAULT_MARKER_OPACITY)
                 .draggable(false)
-                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher)));
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker)));
     }
 
     private void recordButtonClicked() {
@@ -364,7 +364,7 @@ public class MappingActivity extends FragmentActivity {
             mCurrentVolume = 0;
             updateVolumeBar();
             updateVolumeText();
-            status.setImageResource(R.mipmap.ic_action_rec_grey);
+            status.setImageResource(R.mipmap.ic_rec_badge_grey);
             mIsRecording = false;
         } else {
             Log.d(TAG, "recordButtonClicked: Recording ON");
@@ -389,7 +389,7 @@ public class MappingActivity extends FragmentActivity {
             mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
             mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
 
-            status.setImageResource(R.mipmap.ic_action_rec_red);
+            status.setImageResource(R.mipmap.ic_rec_badge_red);
             mIsRecording = true;
         }
     }
