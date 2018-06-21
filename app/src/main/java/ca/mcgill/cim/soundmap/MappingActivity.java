@@ -1,6 +1,5 @@
 package ca.mcgill.cim.soundmap;
 
-//import android.*;
 import android.Manifest;
 import android.app.Dialog;
 import android.content.pm.PackageManager;
@@ -35,8 +34,6 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.Queue;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -67,9 +64,9 @@ public class MappingActivity extends FragmentActivity {
 
     // Event Timers
     private Timer mLocationUpdateTimer;
-    private static final int LOCATION_UPDATE_RATE = 15000; // ms
+    private static final int LOCATION_UPDATE_RATE = 1000; // ms
     private Timer mAudioSampleTimer;
-    private static final int AUDIO_SAMPLE_RATE = 500;      // ms
+    private static final int AUDIO_SAMPLE_RATE = 100;     // ms
 
     // GPS Localization
     private GoogleMap mMap;
@@ -85,7 +82,7 @@ public class MappingActivity extends FragmentActivity {
     // Audio Sampling
     private MediaRecorder mAudioSampler;
     private String mSampleFile;
-    private Queue<Integer> mSamples;
+    private Data mSamples;
     private double mAverageIntensity = 0;
     private static final int POOL_SIZE = 110;
 
@@ -97,7 +94,7 @@ public class MappingActivity extends FragmentActivity {
         Log.d(TAG, "onCreate: Initializing the mapping activity");
 
         // Initialize the Samples ADT
-        mSamples = new LinkedList<>();
+        mSamples = new Data();
 
         try {
             mSampleFile = getExternalCacheDir().getAbsolutePath();
@@ -277,7 +274,7 @@ public class MappingActivity extends FragmentActivity {
                 .tilt(DEFAULT_TILT)
                 .bearing(bearing)
                 .build();
-        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
     private void addMarker(LatLng latLng, String desc) {
@@ -342,7 +339,8 @@ public class MappingActivity extends FragmentActivity {
         if ((mAudioSampler != null) && (!mIsTimeout)) {
             int sample = mAudioSampler.getMaxAmplitude();
             Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
-            mSamples.add(sample);
+            mSamples.push(sample, new LatLng(mLastKnownLocation.getLatitude(),
+                                             mLastKnownLocation.getLongitude()));
         }
 
         // If the sample set has reached the desired pool size,
@@ -356,11 +354,12 @@ public class MappingActivity extends FragmentActivity {
     private void packSamples() {
         Log.d(TAG, "packSamples: Packing samples for transfer");
 
-        int sum = 0;
-        for (int i : mSamples) {
-            sum += i;
+        if (mSamples.isValid()) {
+            mAverageIntensity = mSamples.getAverageIntensity();
+        } else {
+            Log.w(TAG, "packSamples: Data set not valid");
+            mAverageIntensity = 0.0;
         }
-        mAverageIntensity = (double) sum / (double) mSamples.size();
         mSamples.clear();
     }
 
