@@ -70,12 +70,14 @@ public class MappingActivity extends FragmentActivity {
 
     // GPS Localization
     private GoogleMap mMap;
-    private Location mLastKnownLocation;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
+    private float mLastKnownBearing = DEFAULT_BEARING;
+    private LatLng mLastKnownCoords = mDefaultLocation;
     private long mLastFix;
     private static final int GPS_TIMEOUT= 60000;    // ms (1 min)
 
-    // Target Marker
+    // Mapping
+    private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
 
@@ -101,6 +103,7 @@ public class MappingActivity extends FragmentActivity {
             mSampleFile += "/samples.3gp";
         } catch (NullPointerException e) {
             Log.e(TAG, "onCreate: Error - " + e.getMessage());
+            return;
         }
 
         // Initialize Timers
@@ -185,7 +188,6 @@ public class MappingActivity extends FragmentActivity {
                             ActivityCompat.checkSelfPermission(getApplicationContext(),
                                     Manifest.permission.ACCESS_COARSE_LOCATION) !=
                                     PackageManager.PERMISSION_GRANTED) {
-                        updateCameraPose(mDefaultLocation, DEFAULT_BEARING);
                         return;
                     }
                     // Enable Location Services within the Google Maps API
@@ -222,27 +224,19 @@ public class MappingActivity extends FragmentActivity {
                         long now = System.currentTimeMillis();
 
                         if (task.isSuccessful()) {
-                            mLastKnownLocation = (Location) task.getResult();
+                            Location location = (Location) task.getResult();
 
                             // Get the bearing and coordinates of the device location
-                            float bearing = mLastKnownLocation.getBearing();
-                            LatLng latLng = new LatLng(mLastKnownLocation.getLatitude(),
-                                                       mLastKnownLocation.getLongitude());
+                            mLastKnownBearing = location.getBearing();
+                            mLastKnownCoords = new LatLng(location.getLatitude(),
+                                                          location.getLongitude());
 
+                            if (mIsViewInitted) {
+                                updateCameraPose();
+                            } else {
+                                initCameraPose();
+                            }
 
-                            // #############################################################################
-                            // ###  DEVELOPMENT  ###########################################################
-                            // #############################################################################
-
-                            addMarker(latLng, "Target");
-
-                            // #############################################################################
-                            // #############################################################################
-                            // #############################################################################
-
-
-                            // Update the camera's position with the new location
-                            updateCameraPose(latLng, bearing);
                             mIsTimeout = false;
                             mLastFix = now;
 
@@ -265,14 +259,28 @@ public class MappingActivity extends FragmentActivity {
         }
     }
 
-    private void updateCameraPose(LatLng latLng, float bearing) {
+    private void initCameraPose() {
+        // Initialize the Camera position using the new coordinates and bearing
+        // But always keep the default zoom and tilt to somewhat lock the view
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(mLastKnownCoords)
+                .tilt(DEFAULT_TILT)
+                .zoom(DEFAULT_ZOOM)
+                .bearing(mLastKnownBearing)
+                .build();
+        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+
+        mIsViewInitted = true;
+    }
+
+    private void updateCameraPose() {
         // Update the Camera position using the new coordinates and bearing
         // But always keep the default zoom and tilt to somewhat lock the view
         CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(latLng)
-                .zoom(DEFAULT_ZOOM)
+                .target(mLastKnownCoords)
                 .tilt(DEFAULT_TILT)
-                .bearing(bearing)
+                .zoom(mMap.getCameraPosition().zoom) // Don't override zoom if user changed it
+                .bearing(mMap.getCameraPosition().bearing) // Don't override bearing either
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
@@ -339,8 +347,7 @@ public class MappingActivity extends FragmentActivity {
         if ((mAudioSampler != null) && (!mIsTimeout)) {
             int sample = mAudioSampler.getMaxAmplitude();
             Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
-            mSamples.push(sample, new LatLng(mLastKnownLocation.getLatitude(),
-                                             mLastKnownLocation.getLongitude()));
+            mSamples.push(sample, mLastKnownCoords);
         }
 
         // If the sample set has reached the desired pool size,
