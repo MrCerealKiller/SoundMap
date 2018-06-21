@@ -41,9 +41,12 @@
             android:background="@color/colorAccent"
             android:layout_gravity="start|bottom" />
 
-        <Button
+        <ImageButton
             android:id="@+id/rec_button"
-            android:background="@mipmap/ic_button_red"
+            android:contentDescription="@string/rec_button"
+            android:background="@color/transparentBlackEel"
+            android:src="@mipmap/ic_button_red"
+            android:scaleType="fitCenter"
             android:layout_width="80dp"
             android:layout_height="80dp"
             android:layout_margin="64dp"

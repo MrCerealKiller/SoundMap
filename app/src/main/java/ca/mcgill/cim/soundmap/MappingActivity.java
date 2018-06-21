@@ -2,9 +2,9 @@ package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.location.Location;
 import android.media.MediaRecorder;
+import android.os.CountDownTimer;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
@@ -25,7 +25,6 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
-import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
@@ -82,6 +81,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
+    private static final double TARGET_DISTANCE_THRESHOLD = 500; // m
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
@@ -90,6 +90,8 @@ public class MappingActivity extends FragmentActivity {
     private int mCurrentVolume = -1;
     private double mAverageIntensity = 0;
     private static final int POOL_SIZE = 110;
+    private static final int RECORDING_LENGTH = 30000;
+    private static final int RECORDING_CHECK_RATE = 1000;
 
     // Volume Indicator
     private static final int VOLUME_UPPER_BOUND = 1000;
@@ -125,7 +127,7 @@ public class MappingActivity extends FragmentActivity {
         mAudioSampleTimer = new Timer("Audio Sampling Event Timer", true);
 
         // Create Event Listener for the recording button
-        Button recordButton = (Button) findViewById(R.id.rec_button);
+        ImageButton recordButton = (ImageButton) findViewById(R.id.rec_button);
         recordButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -353,7 +355,8 @@ public class MappingActivity extends FragmentActivity {
         Log.d(TAG, "recordButtonClicked: clicked");
 
         if (mIsRecording) {
-            stopRecording();
+            Toast.makeText(this, "Please wait for the recording to finish",
+                    Toast.LENGTH_SHORT).show();;
         } else {
             startRecording();
         }
@@ -362,6 +365,7 @@ public class MappingActivity extends FragmentActivity {
     private void startRecording() {
         Log.d(TAG, "recordButtonClicked: Recording ON");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
+        ImageButton button = (ImageButton) findViewById(R.id.rec_button);
 
         mAudioSampler = new MediaRecorder();
         mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
@@ -383,6 +387,32 @@ public class MappingActivity extends FragmentActivity {
         mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
         mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
 
+        new CountDownTimer(RECORDING_LENGTH, RECORDING_CHECK_RATE) {
+
+            public void onTick(long millisUntilFinished) {
+                Location target = new Location("target");
+                target.setLatitude(mTarget.getPosition().latitude);
+                target.setLongitude(mTarget.getPosition().longitude);
+
+                Location current = new Location("current");
+                current.setLatitude(mLastKnownCoords.latitude);
+                current.setLongitude(mLastKnownCoords.longitude);
+
+                if (current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) {
+                    stopRecording();
+                    Toast.makeText(MappingActivity.this, "You have gone out of range",
+                            Toast.LENGTH_SHORT).show();
+                }
+                // TODO : Update progress bar here
+            }
+
+            public void onFinish() {
+                stopRecording();
+                uploadRecording();
+            }
+        }.start();
+
+        button.setImageResource(R.mipmap.ic_button_grey);
         status.setImageResource(R.mipmap.ic_rec_badge_red);
         mIsRecording = true;
     }
@@ -390,6 +420,7 @@ public class MappingActivity extends FragmentActivity {
     private void stopRecording() {
         Log.d(TAG, "recordButtonClicked: Recording OFF");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
+        ImageButton button = (ImageButton) findViewById(R.id.rec_button);
 
         // Clear the audio sampling event timer and make the status grey
         if (mAudioSampleTimer != null) {
@@ -406,6 +437,7 @@ public class MappingActivity extends FragmentActivity {
         mCurrentVolume = 0;
         updateVolumeBar();
         updateVolumeText();
+        button.setImageResource(R.mipmap.ic_button_red);
         status.setImageResource(R.mipmap.ic_rec_badge_grey);
         mIsRecording = false;
     }
@@ -415,7 +447,8 @@ public class MappingActivity extends FragmentActivity {
         if ((mAudioSampler != null) && (!mIsTimeout)) {
             int sample = mAudioSampler.getMaxAmplitude();
             Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
-            mSamples.push(sample, mLastKnownCoords);
+            // Currently all processing will be done off-board, so the next line is commented out
+            //mSamples.push(sample, mLastKnownCoords);
 
             // Update the volume indicator
             mCurrentVolume = sample;
@@ -425,9 +458,11 @@ public class MappingActivity extends FragmentActivity {
 
         // If the sample set has reached the desired pool size,
         // pack the data into an average to transfer to the server
-        if (mSamples.size() >= POOL_SIZE) {
-            packSamples();
-        }
+        // Currently all processing will be done off-board, so the next control sequence is
+        // commented out
+        //if (mSamples.size() >= POOL_SIZE) {
+        //    packSamples();
+        //}
     }
 
     // Calculate the mean of the data set and then clear it
@@ -441,6 +476,11 @@ public class MappingActivity extends FragmentActivity {
             mAverageIntensity = 0.0;
         }
         mSamples.clear();
+    }
+
+    private void uploadRecording() {
+        // TODO : All of this...
+        Toast.makeText(this, "Uploading now...", Toast.LENGTH_SHORT).show();
     }
 
     void updateVolumeBar() {
