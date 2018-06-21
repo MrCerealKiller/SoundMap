@@ -25,6 +25,13 @@
 
         </ImageButton>
 
+        <View
+            android:id="@+id/volume_bar"
+            android:layout_width="4dp"
+            android:layout_height="0dp"
+            android:background="@color/colorAccent"
+            android:layout_gravity="start|bottom" />
+
         <Button
             android:id="@+id/rec_button"
             android:background="@mipmap/ic_settings"

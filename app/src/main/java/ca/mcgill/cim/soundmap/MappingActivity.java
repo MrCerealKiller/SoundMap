@@ -34,6 +34,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
+import java.io.InterruptedIOException;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -88,6 +89,13 @@ public class MappingActivity extends FragmentActivity {
     private double mAverageIntensity = 0;
     private static final int POOL_SIZE = 110;
 
+    // Volume Indicator
+    private static final int VOLUME_UPPER_BOUND = 1000;
+    private static final int VOLUME_LOWER_BOUND = 100;
+    private View mVolumeBar;
+    private int mVolumeBarMaxHeight;
+    private int mVolumeBarSetpoint;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -121,6 +129,9 @@ public class MappingActivity extends FragmentActivity {
             }
         });
 
+        // Grab the volume bar object for later manipulation
+        mVolumeBar = findViewById(R.id.volume_bar);
+
         Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
         // Check to ensure Google Play Services is active and up-to-date
@@ -135,6 +146,13 @@ public class MappingActivity extends FragmentActivity {
                 Log.d(TAG, "onCreate: Permission denied or map already initialized");
             }
         }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        mVolumeBarMaxHeight = findViewById(R.id.map).getHeight();
+        Log.d(TAG, "onWindowFocusChanged: Height: " + Integer.toString(mVolumeBarMaxHeight));
     }
 
     private void initMap() {
@@ -205,7 +223,7 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void getCurrentLocation() {
-        Log.d(TAG, "getCurrentLocation: Getting current location");
+        //Log.d(TAG, "getCurrentLocation: Getting current location");
         FusedLocationProviderClient fusedLocationProviderClient =
                 LocationServices.getFusedLocationProviderClient(this);
 
@@ -314,6 +332,7 @@ public class MappingActivity extends FragmentActivity {
                 mAudioSampler = null;
             }
 
+            updateVolumeBar(0);
             status.setImageResource(R.mipmap.ic_action_rec_grey);
             mIsRecording = false;
         } else {
@@ -348,6 +367,9 @@ public class MappingActivity extends FragmentActivity {
             int sample = mAudioSampler.getMaxAmplitude();
             Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
             mSamples.push(sample, mLastKnownCoords);
+
+            // Update the volume indicator
+            updateVolumeBar(sample);
         }
 
         // If the sample set has reached the desired pool size,
@@ -368,6 +390,26 @@ public class MappingActivity extends FragmentActivity {
             mAverageIntensity = 0.0;
         }
         mSamples.clear();
+    }
+
+    void updateVolumeBar(int level) {
+        // Map the input volume to the corresponding pixel height
+        if (level > VOLUME_UPPER_BOUND) {
+            mVolumeBarSetpoint = mVolumeBarMaxHeight;
+        } else if (level < VOLUME_LOWER_BOUND) {
+            mVolumeBarSetpoint = 0;
+        } else {
+            double ratio = (double) (level - VOLUME_LOWER_BOUND) / (double) VOLUME_UPPER_BOUND;
+            mVolumeBarSetpoint = (int)(ratio * mVolumeBarMaxHeight);
+        }
+
+        // Update the volume bar setpoint on the UI thread
+        runOnUiThread(new Runnable() {
+            public void run() {
+                mVolumeBar.requestLayout();
+                mVolumeBar.getLayoutParams().height = mVolumeBarSetpoint;
+            }
+        });
     }
 
     // A TimerTask to persistently update the user's location
