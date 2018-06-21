@@ -2,6 +2,7 @@ package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.media.MediaRecorder;
 import android.support.annotation.NonNull;
@@ -24,6 +25,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
@@ -237,7 +239,8 @@ public class MappingActivity extends FragmentActivity {
 
                     // Just for Testing Purposes for now
 
-                    addMarker(mDefaultLocation, "Test");
+                    addMarker(mDefaultLocation, "McGill");
+                    addPerson(new LatLng(45.50659129493268, -73.57684249283386), "Ghostie");
 
                     // #############################################################################
                     // #############################################################################
@@ -325,6 +328,15 @@ public class MappingActivity extends FragmentActivity {
                 .bearing(mMap.getCameraPosition().bearing) // Don't override bearing either
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+    }
+
+    private void addPerson(LatLng latLng, String user) {
+        mTarget = mMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .title(user)
+                .alpha((float)DEFAULT_MARKER_OPACITY)
+                .draggable(false)
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_person)));
     }
 
     private void addMarker(LatLng latLng, String desc) {
