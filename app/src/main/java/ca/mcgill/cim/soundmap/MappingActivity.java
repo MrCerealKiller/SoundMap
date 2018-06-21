@@ -231,6 +231,16 @@ public class MappingActivity extends FragmentActivity {
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
+
+                    // #############################################################################
+                    // #############################################################################
+
+                    // Just for Testing Purposes for now
+
+                    addMarker(mDefaultLocation, "Test");
+
+                    // #############################################################################
+                    // #############################################################################
                 }
             }
         });
