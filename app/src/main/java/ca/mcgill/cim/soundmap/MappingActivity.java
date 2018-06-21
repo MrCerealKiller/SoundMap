@@ -1,7 +1,6 @@
 package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
-import android.app.Dialog;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.media.MediaRecorder;
@@ -17,8 +16,6 @@ import android.widget.ImageButton;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -44,7 +41,6 @@ public class MappingActivity extends FragmentActivity {
     private static final String TAG = "MappingActivity";
 
     // Status and Process Codes
-    private static final int ERROR_DIALOG_REQUEST = 9001;
     private static final int PERMISSIONS_REQ_CODE = 5029;
 
     // List of Necessary Permissions
@@ -57,6 +53,9 @@ public class MappingActivity extends FragmentActivity {
     private boolean mMapInitiated = false;
     private boolean mIsTimeout = false;
     private boolean mIsRecording = false;
+
+    // User
+    private String mUser;
 
     // Default View Settings
     private static final int DEFAULT_ZOOM = 20;
@@ -153,17 +152,13 @@ public class MappingActivity extends FragmentActivity {
 
         Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
-        // Check to ensure Google Play Services is active and up-to-date
-        if (isServicesAvailable()) {
-
-            // Get user permissions for Location and Audio Recording
-            getPermissions();
-            if (mPermissionGranted && !mMapInitiated) {
-                Log.d(TAG, "onCreate: Creating the map");
-                initMap();
-            } else {
-                Log.d(TAG, "onCreate: Permission denied or map already initialized");
-            }
+        // Get user permissions for Location and Audio Recording
+        getPermissions();
+        if (mPermissionGranted && !mMapInitiated) {
+            Log.d(TAG, "onCreate: Creating the map");
+            initMap();
+        } else {
+            Log.d(TAG, "onCreate: Permission denied or map already initialized");
         }
     }
 
@@ -522,29 +517,6 @@ public class MappingActivity extends FragmentActivity {
                     initMap();
                 }
             }
-        }
-    }
-
-    // Check that the Google Play Services is available and compatible
-    private boolean isServicesAvailable() {
-        Log.d(TAG, "isServicesAvailable: Verifying version and connectivity");
-        int available = GoogleApiAvailability.getInstance()
-                .isGooglePlayServicesAvailable(MappingActivity.this);
-
-        if (available == ConnectionResult.SUCCESS) {
-            Log.d(TAG, "isServicesAvailable: Google Play Services successfully connected.");
-            return true;
-        } else if (GoogleApiAvailability.getInstance().isUserResolvableError(available)) {
-            Log.d(TAG, "isServicesAvailable: An error occurred, but can be resolved by the user");
-            Dialog dialog = GoogleApiAvailability.getInstance()
-                    .getErrorDialog(MappingActivity.this, available, ERROR_DIALOG_REQUEST);
-            dialog.show();
-            return false;
-        } else {
-            Log.d(TAG, "isServicesAvailable: An unresolvable error occurred");
-            Toast.makeText(this, "An unresolvable error occurred with Google Play Services",
-                    Toast.LENGTH_LONG).show();
-            return false;
         }
     }
 }

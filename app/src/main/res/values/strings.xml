@@ -3,4 +3,21 @@
     <string name="title_activity_mapping">Mapping</string>
     <string name="rec_badge_front">Recording</string>
     <string name="_0">0</string>
+    <string name="title_activity_login">SoundMap</string>
+
+    <!-- Strings related to login -->
+    <string name="prompt_email">Email</string>
+    <string name="prompt_password">4-Digit Pin</string>
+    <string name="action_sign_in">Sign in or register</string>
+    <string name="action_sign_in_short">Sign in</string>
+    <string name="error_invalid_email">This email address is invalid</string>
+    <string name="error_invalid_pin">Please input a 4 digit pin</string>
+    <string name="error_incorrect_pin">This pin is not correct</string>
+    <string name="error_field_required">This field is required</string>
+    <string name="permission_rationale">"Contacts permissions are needed for providing email
+        completions."
+    </string>
+    <string name="pin_warning">IMPORTANT: This pin is not secure. Please make one that you will remember, but don\'t care about, or generate one.</string>
+    <string name="generate_pin">Generate Pin</string>
+    <string name="signed_in_header">Signed in as:</string>
 </resources>
