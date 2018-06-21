@@ -2,7 +2,6 @@ package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
-import android.graphics.Color;
 import android.location.Location;
 import android.media.MediaRecorder;
 import android.os.CountDownTimer;
@@ -13,8 +12,8 @@ import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -83,10 +82,11 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
-    private static final double TARGET_DISTANCE_THRESHOLD = 100; // m
+    private static final double TARGET_DISTANCE_THRESHOLD = 250; // m
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
+    private ProgressBar mProgressBar;
     private String mSampleFile;
     private Data mSamples;
     private int mCurrentVolume = -1;
@@ -94,6 +94,9 @@ public class MappingActivity extends FragmentActivity {
     private static final int POOL_SIZE = 110;
     private static final int RECORDING_LENGTH = 30000;
     private static final int RECORDING_CHECK_RATE = 1000;
+    private static final double PROGRESS_RATE =
+            ((double)RECORDING_CHECK_RATE / (double)RECORDING_LENGTH) * 100;
+
 
     // Volume Indicator
     private static final int VOLUME_UPPER_BOUND = 1000;
@@ -155,6 +158,7 @@ public class MappingActivity extends FragmentActivity {
         // Grab the volume bar object for later manipulation
         mVolumeBar = findViewById(R.id.volume_bar);
         mVolumeText = (TextView) findViewById(R.id.volume_text);
+        mProgressBar = (ProgressBar) findViewById(R.id.rec_progress);
 
         Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
@@ -398,6 +402,7 @@ public class MappingActivity extends FragmentActivity {
         mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
 
         new CountDownTimer(RECORDING_LENGTH, RECORDING_CHECK_RATE) {
+            private double progress = PROGRESS_RATE;
 
             public void onTick(long millisUntilFinished) {
                 Location target = new Location("target");
@@ -413,7 +418,9 @@ public class MappingActivity extends FragmentActivity {
                     Toast.makeText(MappingActivity.this, "You have gone out of range",
                             Toast.LENGTH_SHORT).show();
                 }
-                // TODO : Update progress bar here
+
+                progress += PROGRESS_RATE;
+                mProgressBar.setProgress((int)progress);
             }
 
             public void onFinish() {
@@ -424,6 +431,7 @@ public class MappingActivity extends FragmentActivity {
 
         button.setImageResource(R.mipmap.ic_button_grey);
         status.setImageResource(R.mipmap.ic_rec_badge_red);
+        mProgressBar.setVisibility(View.VISIBLE);
         mIsRecording = true;
     }
 
@@ -449,6 +457,7 @@ public class MappingActivity extends FragmentActivity {
         updateVolumeText();
         button.setImageResource(R.mipmap.ic_button_red);
         status.setImageResource(R.mipmap.ic_rec_badge_grey);
+        mProgressBar.setVisibility(View.INVISIBLE);
         mIsRecording = false;
     }
 
