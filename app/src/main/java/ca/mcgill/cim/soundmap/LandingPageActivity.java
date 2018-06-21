@@ -10,6 +10,9 @@ import android.support.v4.view.ViewPager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.util.Log;
+import android.view.View;
+import android.widget.TextView;
+import android.widget.Button;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -26,53 +29,42 @@ public class LandingPageActivity extends AppCompatActivity {
 
     private String mUser;
 
+    private TextView mUserText;
     private TabLayout mTabLayout;
     private ViewPager mViewPager;
+    private Button mStartButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_landing_page);
 
+        mUserText = (TextView) findViewById(R.id.signed_in_header);
+        mStartButton = (Button) findViewById(R.id.start_mapping_button);
+
+        mViewPager = (ViewPager) findViewById(R.id.viewpager);
+        setupViewPager(mViewPager);
+
+        mTabLayout = (TabLayout) findViewById(R.id.tabs);
+        mTabLayout.setupWithViewPager(mViewPager);
+
         // Check to ensure Google Play Services is active and up-to-date
         if (isServicesAvailable()) {
             Log.d(TAG, "onCreate: Google Play Services are available");
         } else {
             Log.w(TAG, "onCreate: Google Play Services are not available");
-            // TODO : Disable button
+            mStartButton.setEnabled(false);
         }
 
-//        mViewPager = (ViewPager) findViewById(R.id.viewpager);
-//        setupViewPager(mViewPager);
-//
-//        mTabLayout = (TabLayout) findViewById(R.id.tabs);
-//        mTabLayout.setupWithViewPager(mViewPager);
+        mStartButton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                startMap();
+            }
+        });
 
-        if (mUser == null || mUser.trim() == "") {
+        if (mUser == null || mUser.trim().equals("")) {
             attemptSignIn();
-        }
-    }
-
-    // Check that the Google Play Services is available and compatible
-    private boolean isServicesAvailable() {
-        Log.d(TAG, "isServicesAvailable: Verifying version and connectivity");
-        int available = GoogleApiAvailability.getInstance()
-                .isGooglePlayServicesAvailable(LandingPageActivity.this);
-
-        if (available == ConnectionResult.SUCCESS) {
-            Log.d(TAG, "isServicesAvailable: Google Play Services successfully connected.");
-            return true;
-        } else if (GoogleApiAvailability.getInstance().isUserResolvableError(available)) {
-            Log.d(TAG, "isServicesAvailable: An error occurred, but can be resolved by the user");
-            Dialog dialog = GoogleApiAvailability.getInstance()
-                    .getErrorDialog(LandingPageActivity.this, available, ERROR_DIALOG_REQUEST);
-            dialog.show();
-            return false;
-        } else {
-            Log.d(TAG, "isServicesAvailable: An unresolvable error occurred");
-            Toast.makeText(this, "An unresolvable error occurred with Google Play Services",
-                    Toast.LENGTH_LONG).show();
-            return false;
         }
     }
 
@@ -82,6 +74,12 @@ public class LandingPageActivity extends AppCompatActivity {
         startActivityForResult(signInScreenIntent, result);
     }
 
+    private void startMap() {
+        Intent mapIntent = new Intent(this, MappingActivity.class);
+        mapIntent.putExtra("email", mUser);
+        startActivity(mapIntent);
+    }
+
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -89,6 +87,7 @@ public class LandingPageActivity extends AppCompatActivity {
             Bundle signInResult = data.getExtras();
             if (signInResult != null) {
                 mUser = signInResult.getString("email");
+                mUserText.append("\n" + mUser);
             }
         }
     }
@@ -126,6 +125,29 @@ public class LandingPageActivity extends AppCompatActivity {
         @Override
         public CharSequence getPageTitle(int position) {
             return mFragmentTitleList.get(position);
+        }
+    }
+
+    // Check that the Google Play Services is available and compatible
+    private boolean isServicesAvailable() {
+        Log.d(TAG, "isServicesAvailable: Verifying version and connectivity");
+        int available = GoogleApiAvailability.getInstance()
+                .isGooglePlayServicesAvailable(LandingPageActivity.this);
+
+        if (available == ConnectionResult.SUCCESS) {
+            Log.d(TAG, "isServicesAvailable: Google Play Services successfully connected.");
+            return true;
+        } else if (GoogleApiAvailability.getInstance().isUserResolvableError(available)) {
+            Log.d(TAG, "isServicesAvailable: An error occurred, but can be resolved by the user");
+            Dialog dialog = GoogleApiAvailability.getInstance()
+                    .getErrorDialog(LandingPageActivity.this, available, ERROR_DIALOG_REQUEST);
+            dialog.show();
+            return false;
+        } else {
+            Log.d(TAG, "isServicesAvailable: An unresolvable error occurred");
+            Toast.makeText(this, "An unresolvable error occurred with Google Play Services",
+                    Toast.LENGTH_LONG).show();
+            return false;
         }
     }
 
