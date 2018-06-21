@@ -21,9 +21,25 @@
             android:scaleType="fitCenter"
             android:layout_width="80dp"
             android:layout_height="48dp"
-            android:layout_gravity="end|bottom">
+            android:layout_gravity="end|bottom" />
 
-        </ImageButton>
+        <TextView
+            android:id="@+id/volume_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_gravity="start|top"
+            android:padding="16dp"
+            android:textSize="20sp"
+            android:textColor="@color/white"
+            android:text="@string/_0"
+            android:visibility="gone" />
+
+        <View
+            android:id="@+id/volume_bar"
+            android:layout_width="4dp"
+            android:layout_height="0dp"
+            android:background="@color/colorAccent"
+            android:layout_gravity="start|bottom" />
 
         <Button
             android:id="@+id/rec_button"

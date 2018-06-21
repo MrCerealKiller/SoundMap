@@ -1,6 +1,5 @@
 package ca.mcgill.cim.soundmap;
 
-//import android.*;
 import android.Manifest;
 import android.app.Dialog;
 import android.content.pm.PackageManager;
@@ -15,6 +14,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.TextView;
 import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
@@ -46,7 +46,6 @@ public class MappingActivity extends FragmentActivity {
     private static final String TAG = "MappingActivity";
 
     // Status and Process Codes
-    private static final int ERROR_DIALOG_REQUEST = 9001;
     private static final int PERMISSIONS_REQ_CODE = 5029;
 
     // List of Necessary Permissions
@@ -60,6 +59,9 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsTimeout = false;
     private boolean mIsRecording = false;
 
+    // User
+    private String mUser;
+
     // Default View Settings
     private static final int DEFAULT_ZOOM = 20;
     private static final int DEFAULT_TILT = 70;
@@ -67,27 +69,39 @@ public class MappingActivity extends FragmentActivity {
 
     // Event Timers
     private Timer mLocationUpdateTimer;
-    private static final int LOCATION_UPDATE_RATE = 15000; // ms
+    private static final int LOCATION_UPDATE_RATE = 1000; // ms
     private Timer mAudioSampleTimer;
-    private static final int AUDIO_SAMPLE_RATE = 500;      // ms
+    private static final int AUDIO_SAMPLE_RATE = 100;     // ms
 
     // GPS Localization
     private GoogleMap mMap;
-    private Location mLastKnownLocation;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
+    private float mLastKnownBearing = DEFAULT_BEARING;
+    private LatLng mLastKnownCoords = mDefaultLocation;
     private long mLastFix;
     private static final int GPS_TIMEOUT= 60000;    // ms (1 min)
 
-    // Target Marker
+    // Mapping
+    private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
     private String mSampleFile;
-    private Queue<Integer> mSamples;
+    private Data mSamples;
+    private int mCurrentVolume = -1;
     private double mAverageIntensity = 0;
     private static final int POOL_SIZE = 110;
+
+    // Volume Indicator
+    private static final int VOLUME_UPPER_BOUND = 1000;
+    private static final int VOLUME_LOWER_BOUND = 100;
+    private View mVolumeBar;
+    private int mVolumeBarMaxHeight;
+    private int mVolumeBarSetpoint;
+    private TextView mVolumeText;
+    private boolean mIsTextVisible = false;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -97,13 +111,14 @@ public class MappingActivity extends FragmentActivity {
         Log.d(TAG, "onCreate: Initializing the mapping activity");
 
         // Initialize the Samples ADT
-        mSamples = new LinkedList<>();
+        mSamples = new Data();
 
         try {
             mSampleFile = getExternalCacheDir().getAbsolutePath();
             mSampleFile += "/samples.3gp";
         } catch (NullPointerException e) {
             Log.e(TAG, "onCreate: Error - " + e.getMessage());
+            return;
         }
 
         // Initialize Timers
@@ -121,20 +136,42 @@ public class MappingActivity extends FragmentActivity {
             }
         });
 
+        // Create Event Listener for the recording button
+        ImageButton recBadge = (ImageButton) findViewById(R.id.rec_badge);
+        recBadge.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (mIsTextVisible) {
+                    mVolumeText.setVisibility(View.GONE);
+                    mIsTextVisible = false;
+                } else {
+                    mVolumeText.setVisibility(View.VISIBLE);
+                    mIsTextVisible = true;
+                }
+            }
+        });
+
+        // Grab the volume bar object for later manipulation
+        mVolumeBar = findViewById(R.id.volume_bar);
+        mVolumeText = (TextView) findViewById(R.id.volume_text);
+
         Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
-        // Check to ensure Google Play Services is active and up-to-date
-        if (isServicesAvailable()) {
-
-            // Get user permissions for Location and Audio Recording
-            getPermissions();
-            if (mPermissionGranted && !mMapInitiated) {
-                Log.d(TAG, "onCreate: Creating the map");
-                initMap();
-            } else {
-                Log.d(TAG, "onCreate: Permission denied or map already initialized");
-            }
+        // Get user permissions for Location and Audio Recording
+        getPermissions();
+        if (mPermissionGranted && !mMapInitiated) {
+            Log.d(TAG, "onCreate: Creating the map");
+            initMap();
+        } else {
+            Log.d(TAG, "onCreate: Permission denied or map already initialized");
         }
+    }
+
+    @Override
+    public void onWindowFocusChanged(boolean hasFocus){
+        super.onWindowFocusChanged(hasFocus);
+        mVolumeBarMaxHeight = findViewById(R.id.map).getHeight();
+        Log.d(TAG, "onWindowFocusChanged: Height: " + Integer.toString(mVolumeBarMaxHeight));
     }
 
     private void initMap() {
@@ -188,7 +225,6 @@ public class MappingActivity extends FragmentActivity {
                             ActivityCompat.checkSelfPermission(getApplicationContext(),
                                     Manifest.permission.ACCESS_COARSE_LOCATION) !=
                                     PackageManager.PERMISSION_GRANTED) {
-                        updateCameraPose(mDefaultLocation, DEFAULT_BEARING);
                         return;
                     }
                     // Enable Location Services within the Google Maps API
@@ -200,13 +236,23 @@ public class MappingActivity extends FragmentActivity {
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
+
+                    // #############################################################################
+                    // #############################################################################
+
+                    // Just for Testing Purposes for now
+
+                    addMarker(mDefaultLocation, "Test");
+
+                    // #############################################################################
+                    // #############################################################################
                 }
             }
         });
     }
 
     private void getCurrentLocation() {
-        Log.d(TAG, "getCurrentLocation: Getting current location");
+        //Log.d(TAG, "getCurrentLocation: Getting current location");
         FusedLocationProviderClient fusedLocationProviderClient =
                 LocationServices.getFusedLocationProviderClient(this);
 
@@ -225,27 +271,19 @@ public class MappingActivity extends FragmentActivity {
                         long now = System.currentTimeMillis();
 
                         if (task.isSuccessful()) {
-                            mLastKnownLocation = (Location) task.getResult();
+                            Location location = (Location) task.getResult();
 
                             // Get the bearing and coordinates of the device location
-                            float bearing = mLastKnownLocation.getBearing();
-                            LatLng latLng = new LatLng(mLastKnownLocation.getLatitude(),
-                                                       mLastKnownLocation.getLongitude());
+                            mLastKnownBearing = location.getBearing();
+                            mLastKnownCoords = new LatLng(location.getLatitude(),
+                                                          location.getLongitude());
 
+                            if (mIsViewInitted) {
+                                updateCameraPose();
+                            } else {
+                                initCameraPose();
+                            }
 
-                            // #############################################################################
-                            // ###  DEVELOPMENT  ###########################################################
-                            // #############################################################################
-
-                            addMarker(latLng, "Target");
-
-                            // #############################################################################
-                            // #############################################################################
-                            // #############################################################################
-
-
-                            // Update the camera's position with the new location
-                            updateCameraPose(latLng, bearing);
                             mIsTimeout = false;
                             mLastFix = now;
 
@@ -268,16 +306,30 @@ public class MappingActivity extends FragmentActivity {
         }
     }
 
-    private void updateCameraPose(LatLng latLng, float bearing) {
+    private void initCameraPose() {
+        // Initialize the Camera position using the new coordinates and bearing
+        // But always keep the default zoom and tilt to somewhat lock the view
+        CameraPosition cameraPosition = new CameraPosition.Builder()
+                .target(mLastKnownCoords)
+                .tilt(DEFAULT_TILT)
+                .zoom(DEFAULT_ZOOM)
+                .bearing(mLastKnownBearing)
+                .build();
+        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+
+        mIsViewInitted = true;
+    }
+
+    private void updateCameraPose() {
         // Update the Camera position using the new coordinates and bearing
         // But always keep the default zoom and tilt to somewhat lock the view
         CameraPosition cameraPosition = new CameraPosition.Builder()
-                .target(latLng)
-                .zoom(DEFAULT_ZOOM)
+                .target(mLastKnownCoords)
                 .tilt(DEFAULT_TILT)
-                .bearing(bearing)
+                .zoom(mMap.getCameraPosition().zoom) // Don't override zoom if user changed it
+                .bearing(mMap.getCameraPosition().bearing) // Don't override bearing either
                 .build();
-        mMap.moveCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
     private void addMarker(LatLng latLng, String desc) {
@@ -309,24 +361,29 @@ public class MappingActivity extends FragmentActivity {
                 mAudioSampler = null;
             }
 
+            mCurrentVolume = 0;
+            updateVolumeBar();
+            updateVolumeText();
             status.setImageResource(R.mipmap.ic_action_rec_grey);
             mIsRecording = false;
         } else {
             Log.d(TAG, "recordButtonClicked: Recording ON");
 
             mAudioSampler = new MediaRecorder();
-            mAudioSampler.setAudioSource(MediaRecorder.AudioSource.MIC);
+            mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
             mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
             mAudioSampler.setOutputFile(mSampleFile);
             mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
 
             try {
                 mAudioSampler.prepare();
+                mAudioSampler.start();
             } catch (IOException e) {
+                Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
+                        "being used by another process.", Toast.LENGTH_SHORT).show();
                 Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
+                return;
             }
-
-            mAudioSampler.start();
 
             // Start the audio sampling event timer and make the status red
             mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
@@ -342,7 +399,12 @@ public class MappingActivity extends FragmentActivity {
         if ((mAudioSampler != null) && (!mIsTimeout)) {
             int sample = mAudioSampler.getMaxAmplitude();
             Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
-            mSamples.add(sample);
+            mSamples.push(sample, mLastKnownCoords);
+
+            // Update the volume indicator
+            mCurrentVolume = sample;
+            updateVolumeBar();
+            updateVolumeText();
         }
 
         // If the sample set has reached the desired pool size,
@@ -356,12 +418,42 @@ public class MappingActivity extends FragmentActivity {
     private void packSamples() {
         Log.d(TAG, "packSamples: Packing samples for transfer");
 
-        int sum = 0;
-        for (int i : mSamples) {
-            sum += i;
+        if (mSamples.isValid()) {
+            mAverageIntensity = mSamples.getAverageIntensity();
+        } else {
+            Log.w(TAG, "packSamples: Data set not valid");
+            mAverageIntensity = 0.0;
         }
-        mAverageIntensity = (double) sum / (double) mSamples.size();
         mSamples.clear();
+    }
+
+    void updateVolumeBar() {
+        // Map the input volume to the corresponding pixel height
+        if (mCurrentVolume > VOLUME_UPPER_BOUND) {
+            mVolumeBarSetpoint = mVolumeBarMaxHeight;
+        } else if (mCurrentVolume < VOLUME_LOWER_BOUND) {
+            mVolumeBarSetpoint = 0;
+        } else {
+            double ratio = (double) (mCurrentVolume - VOLUME_LOWER_BOUND) / (double) VOLUME_UPPER_BOUND;
+            mVolumeBarSetpoint = (int)(ratio * mVolumeBarMaxHeight);
+        }
+
+        // Update the volume bar setpoint on the UI thread
+        runOnUiThread(new Runnable() {
+            public void run() {
+                mVolumeBar.requestLayout();
+                mVolumeBar.getLayoutParams().height = mVolumeBarSetpoint;
+            }
+        });
+    }
+
+    void updateVolumeText() {
+        // Update the text to display the audio intensity as a number
+        runOnUiThread(new Runnable() {
+            public void run() {
+                mVolumeText.setText(Integer.toString(mCurrentVolume));
+            }
+        });
     }
 
     // A TimerTask to persistently update the user's location
@@ -440,29 +532,6 @@ public class MappingActivity extends FragmentActivity {
                     initMap();
                 }
             }
-        }
-    }
-
-    // Check that the Google Play Services is available and compatible
-    private boolean isServicesAvailable() {
-        Log.d(TAG, "isServicesAvailable: Verifying version and connectivity");
-        int available = GoogleApiAvailability.getInstance()
-                .isGooglePlayServicesAvailable(MappingActivity.this);
-
-        if (available == ConnectionResult.SUCCESS) {
-            Log.d(TAG, "isServicesAvailable: Google Play Services successfully connected.");
-            return true;
-        } else if (GoogleApiAvailability.getInstance().isUserResolvableError(available)) {
-            Log.d(TAG, "isServicesAvailable: An error occurred, but can be resolved by the user");
-            Dialog dialog = GoogleApiAvailability.getInstance()
-                    .getErrorDialog(MappingActivity.this, available, ERROR_DIALOG_REQUEST);
-            dialog.show();
-            return false;
-        } else {
-            Log.d(TAG, "isServicesAvailable: An unresolvable error occurred");
-            Toast.makeText(this, "An unresolvable error occurred with Google Play Services",
-                    Toast.LENGTH_LONG).show();
-            return false;
         }
     }
 }
