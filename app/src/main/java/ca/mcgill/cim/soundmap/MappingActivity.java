@@ -2,6 +2,7 @@ package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.location.Location;
 import android.media.MediaRecorder;
 import android.os.CountDownTimer;
@@ -25,6 +26,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
@@ -81,7 +83,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
-    private static final double TARGET_DISTANCE_THRESHOLD = 500; // m
+    private static final double TARGET_DISTANCE_THRESHOLD = 100; // m
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
@@ -348,6 +350,14 @@ public class MappingActivity extends FragmentActivity {
                 .alpha((float)DEFAULT_MARKER_OPACITY)
                 .draggable(false)
                 .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker)));
+
+        mMap.addCircle(new CircleOptions()
+                .center(latLng)
+                .radius(TARGET_DISTANCE_THRESHOLD)
+                .clickable(false)
+                .strokeWidth(10)
+                .strokeColor(ContextCompat.getColor(this, R.color.colorAccent))
+                .fillColor(ContextCompat.getColor(this, R.color.brightRedTrans)));
     }
 
     private void recordButtonClicked() {
@@ -369,9 +379,9 @@ public class MappingActivity extends FragmentActivity {
 
         mAudioSampler = new MediaRecorder();
         mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
-        mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
+        mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
         mAudioSampler.setOutputFile(mSampleFile);
-        mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
         try {
             mAudioSampler.prepare();

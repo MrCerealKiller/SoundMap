@@ -11,6 +11,7 @@
     <!-- Primary Colour Palette -->
     <color name="darkRed">#8b0705</color>
     <color name="brightRed">#c71512</color>
+    <color name="brightRedTrans">#26c71512</color>
     <color name="grey">#dde3e5</color>
     <color name="lightBlue">#93bbd0</color>
     <color name="lightBlueTrans">#4D93bbd0</color>
