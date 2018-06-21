@@ -344,54 +344,63 @@ public class MappingActivity extends FragmentActivity {
     private void recordButtonClicked() {
         // Grab the recording status button to switch it on and off
         Log.d(TAG, "recordButtonClicked: clicked");
-        ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
 
         if (mIsRecording) {
-            Log.d(TAG, "recordButtonClicked: Recording OFF");
-
-            // Clear the audio sampling event timer and make the status grey
-            if (mAudioSampleTimer != null) {
-                mAudioSampleTimer.cancel();
-                mAudioSampleTimer.purge();
-            }
-
-            if (mAudioSampler != null) {
-                mAudioSampler.stop();
-                mAudioSampler.release();
-                mAudioSampler = null;
-            }
-
-            mCurrentVolume = 0;
-            updateVolumeBar();
-            updateVolumeText();
-            status.setImageResource(R.mipmap.ic_rec_badge_grey);
-            mIsRecording = false;
+            stopRecording();
         } else {
-            Log.d(TAG, "recordButtonClicked: Recording ON");
-
-            mAudioSampler = new MediaRecorder();
-            mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
-            mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
-            mAudioSampler.setOutputFile(mSampleFile);
-            mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
-
-            try {
-                mAudioSampler.prepare();
-                mAudioSampler.start();
-            } catch (IOException e) {
-                Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
-                        "being used by another process.", Toast.LENGTH_SHORT).show();
-                Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
-                return;
-            }
-
-            // Start the audio sampling event timer and make the status red
-            mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
-            mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
-
-            status.setImageResource(R.mipmap.ic_rec_badge_red);
-            mIsRecording = true;
+            startRecording();
         }
+    }
+
+    private void startRecording() {
+        Log.d(TAG, "recordButtonClicked: Recording ON");
+        ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
+
+        mAudioSampler = new MediaRecorder();
+        mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
+        mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
+        mAudioSampler.setOutputFile(mSampleFile);
+        mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+
+        try {
+            mAudioSampler.prepare();
+            mAudioSampler.start();
+        } catch (IOException e) {
+            Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
+                    "being used by another process.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
+            return;
+        }
+
+        // Start the audio sampling event timer and make the status red
+        mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
+        mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
+
+        status.setImageResource(R.mipmap.ic_rec_badge_red);
+        mIsRecording = true;
+    }
+
+    private void stopRecording() {
+        Log.d(TAG, "recordButtonClicked: Recording OFF");
+        ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
+
+        // Clear the audio sampling event timer and make the status grey
+        if (mAudioSampleTimer != null) {
+            mAudioSampleTimer.cancel();
+            mAudioSampleTimer.purge();
+        }
+
+        if (mAudioSampler != null) {
+            mAudioSampler.stop();
+            mAudioSampler.release();
+            mAudioSampler = null;
+        }
+
+        mCurrentVolume = 0;
+        updateVolumeBar();
+        updateVolumeText();
+        status.setImageResource(R.mipmap.ic_rec_badge_grey);
+        mIsRecording = false;
     }
 
     private void sampleAudio() {
@@ -533,5 +542,13 @@ public class MappingActivity extends FragmentActivity {
                 }
             }
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (mIsRecording) {
+            stopRecording();
+        }
+        finish();
     }
 }
