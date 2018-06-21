@@ -320,7 +320,7 @@ public class MappingActivity extends FragmentActivity {
             Log.d(TAG, "recordButtonClicked: Recording ON");
 
             mAudioSampler = new MediaRecorder();
-            mAudioSampler.setAudioSource(MediaRecorder.AudioSource.MIC);
+            mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
             mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
             mAudioSampler.setOutputFile(mSampleFile);
             mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
