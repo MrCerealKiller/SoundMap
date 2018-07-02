@@ -5,12 +5,14 @@ import android.util.Log;
 
 import com.google.android.gms.maps.model.LatLng;
 
-import java.io.DataOutputStream;
 import java.io.File;
-import java.io.FileInputStream;
+import java.io.IOException;
 
-import java.net.HttpURLConnection;
-import java.net.URL;
+import okhttp3.MultipartBody;
+import okhttp3.OkHttpClient;
+import okhttp3.Request;
+import okhttp3.RequestBody;
+import okhttp3.Response;
 
 public class FileTransferService extends AsyncTask<Void, Integer, String> {
 
@@ -19,17 +21,14 @@ public class FileTransferService extends AsyncTask<Void, Integer, String> {
     private static final String FILE_UPLOAD_URL =
             "http://sandeepmanjanna.dlinkddns.com:5000/upload";
 
-    private static final String LINE_END = "\r\n";
-    private static final String TWO_HYPHENS = "--";
-    private static final String BOUNDARY = "*****";
-    private static int MAX_BUFFER_SIZE = 1 * 1024 * 1024;
-
-    private String mSourceFile;
+    private String mSampleFile;
     private String mUser;
     private String mLocation;
 
-    public FileTransferService(String sourceFile, String user, LatLng location) {
-        mSourceFile = sourceFile;
+    public FileTransferService(String sampleFile, String user, LatLng location) {
+        Log.d(TAG, "FileTransferService: Starting the file transfer service");
+        
+        mSampleFile = sampleFile;
         mUser = user;
         mLocation = location.toString();
     }
@@ -46,100 +45,33 @@ public class FileTransferService extends AsyncTask<Void, Integer, String> {
 
     private String uploadFile() {
 
-        HttpURLConnection conn;
-        DataOutputStream dos;
-        File sourceFile = new File(mSourceFile);
+        // Get the  Sample as a java File
+        File sample = new File(mSampleFile);
 
-        int bytesRead;
-        int bytesAvailable;
-        int bufferSize;
-        byte[] buffer;
-        
-        if (!sourceFile.isFile()) {
-            Log.e(TAG, "uploadFile: Source file does not exist");
-            return "Source file does not exist";
-        } else {
+        // Set up the OkHttp Client
+        OkHttpClient client = new OkHttpClient();
+        Request.Builder reqBuilder = new Request.Builder();
+        reqBuilder.url(FILE_UPLOAD_URL);
 
-            String result = "Failure";
+        // Request Body
+        MultipartBody.Builder bodyBuilder = new MultipartBody.Builder();
+        bodyBuilder.setType(MultipartBody.FORM);
+        bodyBuilder.addFormDataPart("username", mUser);
+        bodyBuilder.addFormDataPart("location", mLocation);
+        bodyBuilder.addFormDataPart("audio", sample.getName(), RequestBody.create(null, sample));
 
-            try {
-                FileInputStream fileInputStream = new FileInputStream(sourceFile);
-                URL url = new URL(FILE_UPLOAD_URL);
+        // Create the Request
+        MultipartBody body = bodyBuilder.build();
+        Request request = reqBuilder.post(body).build();
 
-                conn = (HttpURLConnection) url.openConnection();
-                conn.setDoInput(true);
-                conn.setDoOutput(true);
-                conn.setUseCaches(false);
-
-                conn.setRequestMethod("POST");
-                conn.setRequestProperty("Connection", "Keep-Alive");
-                conn.setRequestProperty("Content-Type","multipart/form-data;BOUNDARY=" + BOUNDARY);
-                conn.setRequestProperty("uploaded_file", mSourceFile);
-
-                conn.connect();
-
-                dos = new DataOutputStream(conn.getOutputStream());
-
-                dos.writeBytes(TWO_HYPHENS + BOUNDARY + LINE_END);
-
-                // Send User Name ------------------------------------------------------------------
-                dos.writeBytes("Content-Disposition: form-data; name=\"user\"" + LINE_END);
-                dos.writeBytes("Content-Type: text/plain; charset=UTF-8" + LINE_END);
-                dos.writeBytes("Content-Length: " + mUser.length() + LINE_END);
-                dos.writeBytes(LINE_END);
-                dos.writeBytes(mUser);
-                dos.writeBytes(LINE_END);
-
-                dos.writeBytes(TWO_HYPHENS + BOUNDARY + LINE_END);
-
-                // Send Location -------------------------------------------------------------------
-                dos.writeBytes("Content-Disposition: form-data; name=\"location\"" + LINE_END);
-                dos.writeBytes("Content-Type: text/plain; charset=UTF-8" + LINE_END);
-                dos.writeBytes("Content-Length: " + mLocation.length() + LINE_END);
-                dos.writeBytes(LINE_END);
-                dos.writeBytes(mLocation);
-                dos.writeBytes(LINE_END);
-
-                dos.writeBytes(TWO_HYPHENS + BOUNDARY + LINE_END);
-
-                // Send File -----------------------------------------------------------------------
-                dos.writeBytes("Content-Disposition: form-data; name=\"file\";filename=\"" +
-                        mSourceFile + "\"" + LINE_END);
-                dos.writeBytes(LINE_END);
-
-                // Create file buffer
-                bytesAvailable = fileInputStream.available();
-                bufferSize = Math.min(bytesAvailable, MAX_BUFFER_SIZE);
-                buffer = new byte[bufferSize];
-
-                // Read the file and transfer it
-                bytesRead = fileInputStream.read(buffer, 0, bufferSize);
-                while (bytesRead > 0)
-                {
-                    dos.write(buffer, 0, bufferSize);
-                    bytesAvailable = fileInputStream.available();
-                    bufferSize = Math.min(bytesAvailable, MAX_BUFFER_SIZE);
-                    bytesRead = fileInputStream.read(buffer, 0, bufferSize);
-                }
-
-                // Terminate the Request -----------------------------------------------------------
-                dos.writeBytes(LINE_END);
-                dos.writeBytes(TWO_HYPHENS + BOUNDARY + TWO_HYPHENS + LINE_END);
-
-                result = conn.getResponseMessage();
-
-                Log.i("uploadFile", "HTTP Response is : "+ result);
-
-                // Close the pipe and flush
-                fileInputStream.close();
-                dos.flush();
-                dos.close();
-
-            } catch (final Exception e) {
-                Log.e(TAG, "uploadFile: Error - " + e.getMessage());
-            }
-
-            return result;
+        // Post the Request using the OkHttp Client
+        try {
+            Log.d(TAG, "uploadFile: Attempting to post the request to the server");
+            Response response = client.newCall(request).execute();
+            return response.body().string();
+        } catch (IOException e) {
+            Log.e(TAG, "uploadFile: Error - " + e.getMessage());
+            return "IO Error";
         }
     }
 }

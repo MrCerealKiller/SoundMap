@@ -37,40 +37,10 @@ public class LandingPageActivity extends AppCompatActivity {
     private ViewPager mViewPager;
     private Button mStartButton;
 
-    private FileTransferService mFileTransferService;
-
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_landing_page);
-
-        // -----------------------------------------------------------------------------------------
-
-        try {
-            String sampleFile = getExternalCacheDir().getAbsolutePath();
-            sampleFile += "/test.txt";
-
-            File file = new File(sampleFile);
-            try {
-                file.createNewFile();
-                FileWriter writer = new FileWriter(file);
-                writer.write("Test data");
-                writer.close();
-
-                LatLng loc = new LatLng(45,73);
-
-                mFileTransferService = new FileTransferService(sampleFile, "test", loc);
-
-            } catch (Exception e) {
-                Log.e(TAG, "onCreate: Error - " + e.getMessage());
-            }
-
-        } catch (NullPointerException e) {
-            Log.e(TAG, "onCreate: Error - " + e.getMessage());
-            return;
-        }
-
-        // -----------------------------------------------------------------------------------------
 
         mUserText = (TextView) findViewById(R.id.signed_in_header);
         mStartButton = (Button) findViewById(R.id.start_mapping_button);
@@ -92,7 +62,7 @@ public class LandingPageActivity extends AppCompatActivity {
         mStartButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                mFileTransferService.execute();
+                startMap();
             }
         });
 

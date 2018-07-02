@@ -498,8 +498,9 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void uploadRecording() {
-        // TODO : All of this...
-        Toast.makeText(this, "Uploading now...", Toast.LENGTH_SHORT).show();
+        // TODO : GET USER INFO FROM INTENT
+        FileTransferService fts = new FileTransferService(mSampleFile, "develop", mLastKnownCoords);
+        fts.execute();
     }
 
     void updateVolumeBar() {
