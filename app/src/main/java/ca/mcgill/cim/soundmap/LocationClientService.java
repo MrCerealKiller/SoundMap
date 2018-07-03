@@ -13,12 +13,13 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
+
 public class LocationClientService {
 
     private static final String TAG = "LocationClientService";
 
     private static final String PING_URL =
-            "http://sandeepmanjanna.dlinkddns.com:5000/";
+            "sandeepmanjanna.dlinkddns.com";
 
     private static final String LOCATION_HOST_URL =
             "http://sandeepmanjanna.dlinkddns.com:5000/location";
@@ -27,25 +28,9 @@ public class LocationClientService {
             "http://sandeepmanjanna.dlinkddns.com:5000/users";
 
     OkHttpClient mClient;
-    private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
 
     public LocationClientService() {
         mClient = new OkHttpClient();
-    }
-
-    public boolean checkConnection() {
-        Runtime runtime = Runtime.getRuntime();
-        try {
-            Process  ping = runtime.exec("/system/bin/ping -c " + PING_URL);
-            int res = ping.waitFor();
-            if (res == 0) {
-                return true;
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "checkConnection: Error - " + e.toString());
-        }
-
-        return false;
     }
 
     public Pair<String, LatLng> getTargetLocation(LatLng userLocation) {
@@ -67,7 +52,7 @@ public class LocationClientService {
 
             String res = response.body().string();
             if (res == null || !res.contains(":") || !res.contains(",")) {
-                return new Pair<>("DEFAULT", mDefaultLocation);
+                return null;
             }
 
             // The name tag of a location should appear before a ":"
@@ -84,16 +69,16 @@ public class LocationClientService {
                     return new Pair<>(tag, location);
                 } catch (Exception e) {
                     Log.e(TAG, "getTargetLocation: Could not parse coordinates");
-                    return new Pair<>("DEFAULT", mDefaultLocation);
+                    return null;
                 }
             } else {
                 Log.e(TAG, "getTargetLocation: Could not parse coordinates");
-                return new Pair<>("DEFAULT", mDefaultLocation);
+                return null;
             }
         } catch (IOException e) {
             Log.e(TAG, "getTargetLocation: DID NOT USE SERVER LOCATION");
             Log.e(TAG, "uploadFile: Error - " + e.getMessage());
-            return new Pair<>("DEFAULT", mDefaultLocation);
+            return null;
         }
     }
 

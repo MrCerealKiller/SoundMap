@@ -57,6 +57,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mMapInitiated = false;
     private boolean mIsTimeout = false;
     private boolean mIsRecording = false;
+    private boolean mIsDebugging = false;
 
     // User
     private String mUser;
@@ -87,7 +88,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
-    private static final double TARGET_DISTANCE_THRESHOLD = 250; // m
+    private static final double TARGET_DISTANCE_THRESHOLD = 100; // m
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
@@ -101,7 +102,6 @@ public class MappingActivity extends FragmentActivity {
     private static final double PROGRESS_RATE =
             ((double)RECORDING_CHECK_RATE / (double)RECORDING_LENGTH) * 100;
 
-
     // Volume Indicator
     private static final int VOLUME_UPPER_BOUND = 1000;
     private static final int VOLUME_LOWER_BOUND = 100;
@@ -110,6 +110,9 @@ public class MappingActivity extends FragmentActivity {
     private int mVolumeBarSetpoint;
     private TextView mVolumeText;
     private boolean mIsTextVisible = false;
+
+    // Error Message
+    private TextView mErrorMessage;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -160,9 +163,11 @@ public class MappingActivity extends FragmentActivity {
                 if (mIsTextVisible) {
                     mVolumeText.setVisibility(View.GONE);
                     mIsTextVisible = false;
+                    mIsDebugging = false;
                 } else {
                     mVolumeText.setVisibility(View.VISIBLE);
                     mIsTextVisible = true;
+                    mIsDebugging = true;
                 }
             }
         });
@@ -171,6 +176,7 @@ public class MappingActivity extends FragmentActivity {
         mVolumeBar = findViewById(R.id.volume_bar);
         mVolumeText = (TextView) findViewById(R.id.volume_text);
         mProgressBar = (ProgressBar) findViewById(R.id.rec_progress);
+        mErrorMessage = (TextView) findViewById(R.id.error_text);
 
         Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
@@ -346,6 +352,7 @@ public class MappingActivity extends FragmentActivity {
             return;
         }
 
+        // Clear previous data
         runOnUiThread(new Runnable(){
             public void run() {
                 mMap.clear();
@@ -360,12 +367,24 @@ public class MappingActivity extends FragmentActivity {
             if (target != null && target.first != null && target.second != null) {
                 runOnUiThread(new Runnable(){
                     public void run() {
+                        mErrorMessage.setVisibility(View.GONE);
                         addMarker(target.second, target.first);
+                    }
+                });
+            } else {
+                runOnUiThread(new Runnable(){
+                    public void run() {
+                        mErrorMessage.setVisibility(View.VISIBLE);
                     }
                 });
             }
         } catch (Exception e) {
             Log.e(TAG, "updatePointsOfInterest: Error - " + e.toString());
+            runOnUiThread(new Runnable(){
+                public void run() {
+                    mErrorMessage.setVisibility(View.VISIBLE);
+                }
+            });
         }
 
         Log.d(TAG, "updatePointsOfInterest: Attempting to add user markers");
@@ -397,7 +416,7 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void addMarker(LatLng latLng, String desc) {
-        mMap.addMarker(new MarkerOptions()
+        mTarget = mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .title(desc)
                 .alpha((float)DEFAULT_MARKER_OPACITY)
@@ -470,10 +489,11 @@ public class MappingActivity extends FragmentActivity {
                 current.setLatitude(mLastKnownCoords.latitude);
                 current.setLongitude(mLastKnownCoords.longitude);
 
-                if (current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) {
+                if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
                     stopRecording();
                     Toast.makeText(MappingActivity.this, "You have gone out of range",
                             Toast.LENGTH_SHORT).show();
+                    cancel();
                 }
 
                 progress += PROGRESS_RATE;
@@ -503,8 +523,13 @@ public class MappingActivity extends FragmentActivity {
             mAudioSampleTimer.purge();
         }
 
-        if (mAudioSampler != null) {
-            mAudioSampler.stop();
+        if (mAudioSampler != null && mIsRecording) {
+            try {
+                mAudioSampler.stop();
+            } catch (Exception e) {
+                Log.e(TAG, "stopRecording: Error trying to stop media recorder.\n\tError - " +
+                        e.toString());
+            }
             mAudioSampler.release();
             mAudioSampler = null;
         }
@@ -536,6 +561,8 @@ public class MappingActivity extends FragmentActivity {
             Log.w(TAG, "uploadRecording: Could not find an appropriate source file path");
             return;
         }
+
+        Toast.makeText(this, "Uploading the audio sample...", Toast.LENGTH_SHORT).show();
 
         FileTransferService fts = new FileTransferService(mSampleFile, mUser, mLastKnownCoords);
         fts.execute();
