@@ -1,24 +1,23 @@
 package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
-import android.app.Dialog;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.media.MediaRecorder;
+import android.os.CountDownTimer;
 import android.support.annotation.NonNull;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.util.Pair;
 import android.view.View;
-import android.widget.Button;
 import android.widget.ImageButton;
+import android.widget.ProgressBar;
 import android.widget.TextView;
 import android.widget.Toast;
 
-import com.google.android.gms.common.ConnectionResult;
-import com.google.android.gms.common.GoogleApiAvailability;
 import com.google.android.gms.location.FusedLocationProviderClient;
 import com.google.android.gms.location.LocationServices;
 import com.google.android.gms.maps.CameraUpdateFactory;
@@ -27,6 +26,7 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.CameraPosition;
+import com.google.android.gms.maps.model.CircleOptions;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
 import com.google.android.gms.maps.model.Marker;
@@ -35,8 +35,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
-import java.util.LinkedList;
-import java.util.Queue;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -58,6 +57,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mMapInitiated = false;
     private boolean mIsTimeout = false;
     private boolean mIsRecording = false;
+    private boolean mIsDebugging = false;
 
     // User
     private String mUser;
@@ -72,9 +72,12 @@ public class MappingActivity extends FragmentActivity {
     private static final int LOCATION_UPDATE_RATE = 1000; // ms
     private Timer mAudioSampleTimer;
     private static final int AUDIO_SAMPLE_RATE = 100;     // ms
+    private Timer mPointOfInterestTimer;
+    private static final int POI_UPDATE_RATE = 30000;     // ms
 
     // GPS Localization
     private GoogleMap mMap;
+    private LocationClientService mLocationClientService;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
     private float mLastKnownBearing = DEFAULT_BEARING;
     private LatLng mLastKnownCoords = mDefaultLocation;
@@ -85,14 +88,19 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
+    private static final double TARGET_DISTANCE_THRESHOLD = 100; // m
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
+    private ProgressBar mProgressBar;
     private String mSampleFile;
-    private Data mSamples;
+    private String mPathToFile;
     private int mCurrentVolume = -1;
-    private double mAverageIntensity = 0;
-    private static final int POOL_SIZE = 110;
+    private static final String AUDIO_FILE_EXT = ".3gp";
+    private static final int RECORDING_LENGTH = 30000;
+    private static final int RECORDING_CHECK_RATE = 1000;
+    private static final double PROGRESS_RATE =
+            ((double)RECORDING_CHECK_RATE / (double)RECORDING_LENGTH) * 100;
 
     // Volume Indicator
     private static final int VOLUME_UPPER_BOUND = 1000;
@@ -103,6 +111,9 @@ public class MappingActivity extends FragmentActivity {
     private TextView mVolumeText;
     private boolean mIsTextVisible = false;
 
+    // Error Message
+    private TextView mErrorMessage;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -110,12 +121,17 @@ public class MappingActivity extends FragmentActivity {
 
         Log.d(TAG, "onCreate: Initializing the mapping activity");
 
-        // Initialize the Samples ADT
-        mSamples = new Data();
+        // Get user from landing page
+        Bundle extras = getIntent().getExtras();
+        if (extras.containsKey("email")) {
+            mUser = extras.getString("email");
+        } else {
+            mUser = "anon";
+        }
+        Log.d(TAG, "onCreate: User identified as: " + mUser);
 
         try {
-            mSampleFile = getExternalCacheDir().getAbsolutePath();
-            mSampleFile += "/samples.3gp";
+            mPathToFile = getExternalCacheDir().getAbsolutePath();
         } catch (NullPointerException e) {
             Log.e(TAG, "onCreate: Error - " + e.getMessage());
             return;
@@ -126,9 +142,12 @@ public class MappingActivity extends FragmentActivity {
         // $2 == Run as Daemon
         mLocationUpdateTimer = new Timer("GPS Update Event Timer", true);
         mAudioSampleTimer = new Timer("Audio Sampling Event Timer", true);
+        mPointOfInterestTimer = new Timer("POI Update Event Timer", false);
+
+        mLocationClientService = new LocationClientService();
 
         // Create Event Listener for the recording button
-        Button recordButton = (Button) findViewById(R.id.rec_button);
+        ImageButton recordButton = (ImageButton) findViewById(R.id.rec_button);
         recordButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -144,9 +163,11 @@ public class MappingActivity extends FragmentActivity {
                 if (mIsTextVisible) {
                     mVolumeText.setVisibility(View.GONE);
                     mIsTextVisible = false;
+                    mIsDebugging = false;
                 } else {
                     mVolumeText.setVisibility(View.VISIBLE);
                     mIsTextVisible = true;
+                    mIsDebugging = true;
                 }
             }
         });
@@ -154,6 +175,8 @@ public class MappingActivity extends FragmentActivity {
         // Grab the volume bar object for later manipulation
         mVolumeBar = findViewById(R.id.volume_bar);
         mVolumeText = (TextView) findViewById(R.id.volume_text);
+        mProgressBar = (ProgressBar) findViewById(R.id.rec_progress);
+        mErrorMessage = (TextView) findViewById(R.id.error_text);
 
         Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
@@ -236,16 +259,7 @@ public class MappingActivity extends FragmentActivity {
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
-
-                    // #############################################################################
-                    // #############################################################################
-
-                    // Just for Testing Purposes for now
-
-                    addMarker(mDefaultLocation, "Test");
-
-                    // #############################################################################
-                    // #############################################################################
+                    mPointOfInterestTimer.schedule(new UpdatePOITask(), 0, POI_UPDATE_RATE);
                 }
             }
         });
@@ -332,66 +346,201 @@ public class MappingActivity extends FragmentActivity {
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
+    private void updatePointsOfInterest() {
+        if (mLocationClientService == null) {
+            Log.w(TAG, "updatePointsOfInterest: Location Client Service is not initted");
+            return;
+        }
+
+        // Clear previous data
+        runOnUiThread(new Runnable(){
+            public void run() {
+                mMap.clear();
+            }
+        });
+
+        Log.d(TAG, "updatePointsOfInterest: Attempting to add target marker");
+        try {
+            final Pair<String, LatLng> target =
+                    mLocationClientService.getTargetLocation(mLastKnownCoords);
+
+            if (target != null && target.first != null && target.second != null) {
+                runOnUiThread(new Runnable(){
+                    public void run() {
+                        mErrorMessage.setVisibility(View.GONE);
+                        addMarker(target.second, target.first);
+                    }
+                });
+            } else {
+                runOnUiThread(new Runnable(){
+                    public void run() {
+                        mErrorMessage.setVisibility(View.VISIBLE);
+                    }
+                });
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "updatePointsOfInterest: Error - " + e.toString());
+            runOnUiThread(new Runnable(){
+                public void run() {
+                    mErrorMessage.setVisibility(View.VISIBLE);
+                }
+            });
+        }
+
+        Log.d(TAG, "updatePointsOfInterest: Attempting to add user markers");
+        try {
+            List<Pair<String, LatLng>> users =
+                    mLocationClientService.getOtherUsers();
+
+            if (!(users == null || users.isEmpty())) {
+                for (final Pair<String, LatLng> user : users) {
+                    runOnUiThread(new Runnable(){
+                        public void run() {
+                            addPerson(user.second, user.first);
+                        }
+                    });
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "updatePointsOfInterest: Error - " + e.toString());
+        }
+    }
+
+    private void addPerson(LatLng latLng, String user) {
+        mMap.addMarker(new MarkerOptions()
+                .position(latLng)
+                .title(user)
+                .alpha((float)DEFAULT_MARKER_OPACITY)
+                .draggable(false)
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_person)));
+    }
+
     private void addMarker(LatLng latLng, String desc) {
         mTarget = mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .title(desc)
                 .alpha((float)DEFAULT_MARKER_OPACITY)
                 .draggable(false)
-                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_launcher)));
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_marker)));
+
+        mMap.addCircle(new CircleOptions()
+                .center(latLng)
+                .radius(TARGET_DISTANCE_THRESHOLD)
+                .clickable(false)
+                .strokeWidth(10)
+                .strokeColor(ContextCompat.getColor(this, R.color.colorAccent))
+                .fillColor(ContextCompat.getColor(this, R.color.brightRedTrans)));
     }
 
     private void recordButtonClicked() {
         // Grab the recording status button to switch it on and off
         Log.d(TAG, "recordButtonClicked: clicked");
-        ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
 
         if (mIsRecording) {
-            Log.d(TAG, "recordButtonClicked: Recording OFF");
-
-            // Clear the audio sampling event timer and make the status grey
-            if (mAudioSampleTimer != null) {
-                mAudioSampleTimer.cancel();
-                mAudioSampleTimer.purge();
-            }
-
-            if (mAudioSampler != null) {
-                mAudioSampler.stop();
-                mAudioSampler.release();
-                mAudioSampler = null;
-            }
-
-            mCurrentVolume = 0;
-            updateVolumeBar();
-            updateVolumeText();
-            status.setImageResource(R.mipmap.ic_action_rec_grey);
-            mIsRecording = false;
+            Toast.makeText(this, "Please wait for the recording to finish",
+                    Toast.LENGTH_SHORT).show();
         } else {
-            Log.d(TAG, "recordButtonClicked: Recording ON");
+            startRecording();
+        }
+    }
 
-            mAudioSampler = new MediaRecorder();
-            mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
-            mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.AAC_ADTS);
+    private void startRecording() {
+        Log.d(TAG, "recordButtonClicked: Recording ON");
+        ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
+        ImageButton button = (ImageButton) findViewById(R.id.rec_button);
+
+        mAudioSampler = new MediaRecorder();
+        mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
+        mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
+        mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+
+        if (mPathToFile == null || mPathToFile.trim().equals("")) {
+            Toast.makeText(this, "Cannot record.. Contact admin", Toast.LENGTH_LONG).show();
+            return;
+        } else {
+            mSampleFile = mPathToFile + "/" + mUser + "_"
+                    + Long.toString(System.currentTimeMillis()) + AUDIO_FILE_EXT;
             mAudioSampler.setOutputFile(mSampleFile);
-            mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AAC);
+        }
 
-            try {
-                mAudioSampler.prepare();
-                mAudioSampler.start();
-            } catch (IOException e) {
-                Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
-                        "being used by another process.", Toast.LENGTH_SHORT).show();
-                Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
-                return;
+        try {
+            mAudioSampler.prepare();
+            mAudioSampler.start();
+        } catch (IOException e) {
+            Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
+                    "being used by another process.", Toast.LENGTH_SHORT).show();
+            Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
+            return;
+        }
+
+        // Start the audio sampling event timer and make the status red
+        mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
+        mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
+
+        new CountDownTimer(RECORDING_LENGTH, RECORDING_CHECK_RATE) {
+            private double progress = PROGRESS_RATE;
+
+            public void onTick(long millisUntilFinished) {
+                Location target = new Location("target");
+                target.setLatitude(mTarget.getPosition().latitude);
+                target.setLongitude(mTarget.getPosition().longitude);
+
+                Location current = new Location("current");
+                current.setLatitude(mLastKnownCoords.latitude);
+                current.setLongitude(mLastKnownCoords.longitude);
+
+                if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
+                    stopRecording();
+                    Toast.makeText(MappingActivity.this, "You have gone out of range",
+                            Toast.LENGTH_SHORT).show();
+                    cancel();
+                }
+
+                progress += PROGRESS_RATE;
+                mProgressBar.setProgress((int)progress);
             }
 
-            // Start the audio sampling event timer and make the status red
-            mAudioSampleTimer = new Timer("Audio Sampling Event Timer",true);
-            mAudioSampleTimer.schedule(new SampleAudioTask(), 0, AUDIO_SAMPLE_RATE);
+            public void onFinish() {
+                stopRecording();
+                uploadRecording();
+            }
+        }.start();
 
-            status.setImageResource(R.mipmap.ic_action_rec_red);
-            mIsRecording = true;
+        button.setImageResource(R.mipmap.ic_button_grey);
+        status.setImageResource(R.mipmap.ic_rec_badge_red);
+        mProgressBar.setVisibility(View.VISIBLE);
+        mIsRecording = true;
+    }
+
+    private void stopRecording() {
+        Log.d(TAG, "recordButtonClicked: Recording OFF");
+        ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
+        ImageButton button = (ImageButton) findViewById(R.id.rec_button);
+
+        // Clear the audio sampling event timer and make the status grey
+        if (mAudioSampleTimer != null) {
+            mAudioSampleTimer.cancel();
+            mAudioSampleTimer.purge();
         }
+
+        if (mAudioSampler != null && mIsRecording) {
+            try {
+                mAudioSampler.stop();
+            } catch (Exception e) {
+                Log.e(TAG, "stopRecording: Error trying to stop media recorder.\n\tError - " +
+                        e.toString());
+            }
+            mAudioSampler.release();
+            mAudioSampler = null;
+        }
+
+        mCurrentVolume = 0;
+        updateVolumeBar();
+        updateVolumeText();
+        button.setImageResource(R.mipmap.ic_button_red);
+        status.setImageResource(R.mipmap.ic_rec_badge_grey);
+        mProgressBar.setVisibility(View.INVISIBLE);
+        mIsRecording = false;
     }
 
     private void sampleAudio() {
@@ -399,32 +548,24 @@ public class MappingActivity extends FragmentActivity {
         if ((mAudioSampler != null) && (!mIsTimeout)) {
             int sample = mAudioSampler.getMaxAmplitude();
             Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
-            mSamples.push(sample, mLastKnownCoords);
 
             // Update the volume indicator
             mCurrentVolume = sample;
             updateVolumeBar();
             updateVolumeText();
         }
-
-        // If the sample set has reached the desired pool size,
-        // pack the data into an average to transfer to the server
-        if (mSamples.size() >= POOL_SIZE) {
-            packSamples();
-        }
     }
 
-    // Calculate the mean of the data set and then clear it
-    private void packSamples() {
-        Log.d(TAG, "packSamples: Packing samples for transfer");
-
-        if (mSamples.isValid()) {
-            mAverageIntensity = mSamples.getAverageIntensity();
-        } else {
-            Log.w(TAG, "packSamples: Data set not valid");
-            mAverageIntensity = 0.0;
+    private void uploadRecording() {
+        if (mSampleFile == null || mSampleFile.trim().equals("")) {
+            Log.w(TAG, "uploadRecording: Could not find an appropriate source file path");
+            return;
         }
-        mSamples.clear();
+
+        Toast.makeText(this, "Uploading the audio sample...", Toast.LENGTH_SHORT).show();
+
+        FileTransferService fts = new FileTransferService(mSampleFile, mUser, mLastKnownCoords);
+        fts.execute();
     }
 
     void updateVolumeBar() {
@@ -464,19 +605,20 @@ public class MappingActivity extends FragmentActivity {
         }
     }
 
-    // A TimerTask that acts as a timeout for unresponsive GPS
-    private class GPSTimeoutTask extends TimerTask {
-        @Override
-        public void run() {
-            mIsTimeout = true;
-        }
-    }
-
     // A TimerTask to sample audio at a consistent event rate
     private class SampleAudioTask extends TimerTask {
         @Override
         public void run() {
             sampleAudio();
+        }
+    }
+
+    // A TimerTask to sample audio at a consistent event rate
+    private class UpdatePOITask extends TimerTask {
+
+        @Override
+        public void run() {
+            updatePointsOfInterest();
         }
     }
 
@@ -533,5 +675,13 @@ public class MappingActivity extends FragmentActivity {
                 }
             }
         }
+    }
+
+    @Override
+    public void onBackPressed() {
+        if (mIsRecording) {
+            stopRecording();
+        }
+        finish();
     }
 }

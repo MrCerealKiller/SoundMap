@@ -13,7 +13,7 @@
         android:layout_width="60dp"
         android:layout_height="60dp"
         android:layout_marginBottom="16dp"
-        android:src="@mipmap/ic_launcher"
+        android:src="@mipmap/ic_marker"
         android:layout_gravity="center_horizontal|top" />
 
     <TextView

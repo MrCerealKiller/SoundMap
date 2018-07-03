@@ -17,7 +17,7 @@
             android:id="@+id/rec_badge"
             android:contentDescription="@string/rec_badge_front"
             android:background="@drawable/rec_badge_background"
-            android:src="@mipmap/ic_action_rec_grey"
+            android:src="@mipmap/ic_rec_badge_grey"
             android:scaleType="fitCenter"
             android:layout_width="80dp"
             android:layout_height="48dp"
@@ -34,6 +34,19 @@
             android:text="@string/_0"
             android:visibility="gone" />
 
+        <TextView
+            android:id="@+id/error_text"
+            android:layout_width="match_parent"
+            android:layout_height="80dp"
+            android:layout_gravity="center"
+            android:padding="16dp"
+            android:background="@color/colorAccent"
+            android:textSize="20sp"
+            android:textColor="@color/white"
+            android:textAlignment="center"
+            android:text="@string/server_connection_error"
+            android:visibility="gone" />
+
         <View
             android:id="@+id/volume_bar"
             android:layout_width="4dp"
@@ -41,14 +54,28 @@
             android:background="@color/colorAccent"
             android:layout_gravity="start|bottom" />
 
-        <Button
+        <ProgressBar
+            android:id="@+id/rec_progress"
+            style="@style/Base.Widget.AppCompat.ProgressBar.Horizontal"
+            android:progressDrawable="@drawable/circular_progress"
+            android:progress="0"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:layout_margin="64dp"
+            android:layout_gravity="center_horizontal|bottom" />
+
+        <ImageButton
             android:id="@+id/rec_button"
-            android:background="@mipmap/ic_settings"
-            android:layout_width="80dp"
-            android:layout_height="80dp"
+            android:contentDescription="@string/rec_button"
+            android:background="@color/transparentBlackEel"
+            android:src="@mipmap/ic_button_red"
+            android:scaleType="fitCenter"
+            android:layout_width="96dp"
+            android:layout_height="96dp"
+            android:padding="8dp"
             android:layout_margin="64dp"
             android:layout_gravity="center_horizontal|bottom" />
 
     </fragment>
-    
+
 </LinearLayout>
