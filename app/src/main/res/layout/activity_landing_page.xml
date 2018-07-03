@@ -5,7 +5,7 @@
     android:id="@+id/activity_landing_page"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    tools:context="ca.mcgill.cim.soundmap.LandingPageActivity">
+    tools:context="ca.mcgill.cim.soundmap.activities.LandingPageActivity">
 
     <include layout="@layout/content_landing_page" />
 

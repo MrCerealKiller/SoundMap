@@ -1,4 +1,4 @@
-package ca.mcgill.cim.soundmap;
+package ca.mcgill.cim.soundmap.services;
 
 import android.os.AsyncTask;
 import android.util.Log;

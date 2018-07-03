@@ -1,4 +1,4 @@
-package ca.mcgill.cim.soundmap;
+package ca.mcgill.cim.soundmap.services;
 
 import android.util.Log;
 import android.util.Pair;
@@ -18,22 +18,16 @@ public class LocationClientService {
 
     private static final String TAG = "LocationClientService";
 
-    private static final String PING_URL =
-            "sandeepmanjanna.dlinkddns.com";
-
     private static final String LOCATION_HOST_URL =
             "http://sandeepmanjanna.dlinkddns.com:5000/location";
 
     private static final String USERS_HOST_URL =
             "http://sandeepmanjanna.dlinkddns.com:5000/users";
 
-    OkHttpClient mClient;
-
-    public LocationClientService() {
-        mClient = new OkHttpClient();
-    }
+    public LocationClientService() {}
 
     public Pair<String, LatLng> getTargetLocation(LatLng userLocation) {
+        OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url(LOCATION_HOST_URL)
                 .header("lat", Double.toString(userLocation.latitude))
@@ -43,7 +37,7 @@ public class LocationClientService {
         // Post the Request using the OkHttp Client
         try {
             Log.d(TAG, "getTargetLocation: attempting get request to server");
-            Response response = mClient.newCall(request).execute();
+            Response response = client.newCall(request).execute();
 
             /**
              * Example Response:
@@ -86,6 +80,7 @@ public class LocationClientService {
         // TODO : This will be a heavy computation for lots of users, but should be fine for
         // the assumed scale at this time.
 
+        OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url(USERS_HOST_URL)
                 .build();
@@ -96,7 +91,7 @@ public class LocationClientService {
         // Post the Request using the OkHttp Client
         try {
             Log.d(TAG, "getOtherUsers: attempting get request to server");
-            Response response = mClient.newCall(request).execute();
+            Response response = client.newCall(request).execute();
 
             /**
              * Example Response:
@@ -122,7 +117,7 @@ public class LocationClientService {
                         Double lat = Double.parseDouble(coords[0]);
                         Double lng = Double.parseDouble(coords[1]);
                         LatLng location = new LatLng(lat, lng);
-                        result.add(new Pair<String, LatLng>(name, location));
+                        result.add(new Pair<>(name, location));
                     } catch (Exception e) {
                         Log.e(TAG, "getOtherUsers: Could not parse user coordintates. Skipping...");
                     }

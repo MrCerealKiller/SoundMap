@@ -13,6 +13,7 @@
         android:layout_height="wrap_content"
         android:layout_centerInParent="true"
         android:layout_marginBottom="8dp"
+        android:focusable="true"
         android:visibility="gone" />
 
     <ScrollView
@@ -28,6 +29,7 @@
 
             <ImageView
                 android:layout_width="100dp"
+                android:contentDescription="@string/logo"
                 android:layout_height="100dp"
                 android:src="@mipmap/ic_marker"
                 android:layout_gravity="center_horizontal"
@@ -37,7 +39,7 @@
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content">
 
-                <AutoCompleteTextView
+                <EditText
                     android:id="@+id/email"
                     android:nextFocusDown="@+id/.."
                     android:layout_width="match_parent"

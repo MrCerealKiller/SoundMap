@@ -1,4 +1,4 @@
-package ca.mcgill.cim.soundmap;
+package ca.mcgill.cim.soundmap.activities;
 
 import android.app.Dialog;
 import android.content.Intent;
@@ -17,12 +17,13 @@ import android.widget.Toast;
 
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.GoogleApiAvailability;
-import com.google.android.gms.maps.model.LatLng;
 
-import java.io.File;
-import java.io.FileWriter;
 import java.util.ArrayList;
 import java.util.List;
+
+import ca.mcgill.cim.soundmap.R;
+import ca.mcgill.cim.soundmap.fragments.InstructionsFragment;
+import ca.mcgill.cim.soundmap.fragments.TermsFragment;
 
 public class LandingPageActivity extends AppCompatActivity {
 
@@ -31,11 +32,7 @@ public class LandingPageActivity extends AppCompatActivity {
     private static final int ERROR_DIALOG_REQUEST = 9001;
 
     private String mUser;
-
     private TextView mUserText;
-    private TabLayout mTabLayout;
-    private ViewPager mViewPager;
-    private Button mStartButton;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -43,23 +40,23 @@ public class LandingPageActivity extends AppCompatActivity {
         setContentView(R.layout.activity_landing_page);
 
         mUserText = (TextView) findViewById(R.id.signed_in_header);
-        mStartButton = (Button) findViewById(R.id.start_mapping_button);
+        Button startButton = (Button) findViewById(R.id.start_mapping_button);
 
-        mViewPager = (ViewPager) findViewById(R.id.viewpager);
-        setupViewPager(mViewPager);
+        ViewPager viewPager = (ViewPager) findViewById(R.id.viewpager);
+        setupViewPager(viewPager);
 
-        mTabLayout = (TabLayout) findViewById(R.id.tabs);
-        mTabLayout.setupWithViewPager(mViewPager);
+        TabLayout tabLayout = (TabLayout) findViewById(R.id.tabs);
+        tabLayout.setupWithViewPager(viewPager);
 
         // Check to ensure Google Play Services is active and up-to-date
         if (isServicesAvailable()) {
             Log.d(TAG, "onCreate: Google Play Services are available");
         } else {
             Log.w(TAG, "onCreate: Google Play Services are not available");
-            mStartButton.setEnabled(false);
+            startButton.setEnabled(false);
         }
 
-        mStartButton.setOnClickListener(new View.OnClickListener() {
+        startButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startMap();
@@ -106,7 +103,7 @@ public class LandingPageActivity extends AppCompatActivity {
         private final List<Fragment> mFragmentList = new ArrayList<>();
         private final List<String> mFragmentTitleList = new ArrayList<>();
 
-        public ViewPagerAdapter(FragmentManager manager) {
+        ViewPagerAdapter(FragmentManager manager) {
             super(manager);
         }
 
@@ -120,7 +117,7 @@ public class LandingPageActivity extends AppCompatActivity {
             return mFragmentList.size();
         }
 
-        public void addFragment(Fragment fragment, String title) {
+        void addFragment(Fragment fragment, String title) {
             mFragmentList.add(fragment);
             mFragmentTitleList.add(title);
         }
@@ -156,6 +153,6 @@ public class LandingPageActivity extends AppCompatActivity {
 
     @Override
     public void onBackPressed() {
-        // Do nothing...
+        // Do nothing... --> Do not let the user go back to the login screen
     }
 }

@@ -1,4 +1,4 @@
-package ca.mcgill.cim.soundmap;
+package ca.mcgill.cim.soundmap.activities;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
@@ -39,6 +39,10 @@ import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
+import ca.mcgill.cim.soundmap.R;
+import ca.mcgill.cim.soundmap.services.FileTransferService;
+import ca.mcgill.cim.soundmap.services.LocationClientService;
+
 public class MappingActivity extends FragmentActivity {
 
     // Log Tag
@@ -48,9 +52,15 @@ public class MappingActivity extends FragmentActivity {
     private static final int PERMISSIONS_REQ_CODE = 5029;
 
     // List of Necessary Permissions
-    private static String[] PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION,
+    private static String[] PERMISSIONS = {
+            Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION,
-            Manifest.permission.RECORD_AUDIO};
+            Manifest.permission.RECORD_AUDIO,
+            Manifest.permission.INTERNET
+    };
+
+    // User
+    private String mUser;
 
     // Process Flags
     private boolean mPermissionGranted = false;
@@ -58,9 +68,6 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsTimeout = false;
     private boolean mIsRecording = false;
     private boolean mIsDebugging = false;
-
-    // User
-    private String mUser;
 
     // Default View Settings
     private static final int DEFAULT_ZOOM = 20;
@@ -76,15 +83,16 @@ public class MappingActivity extends FragmentActivity {
     private static final int POI_UPDATE_RATE = 30000;     // ms
 
     // GPS Localization
-    private GoogleMap mMap;
     private LocationClientService mLocationClientService;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
     private float mLastKnownBearing = DEFAULT_BEARING;
     private LatLng mLastKnownCoords = mDefaultLocation;
     private long mLastFix;
-    private static final int GPS_TIMEOUT= 60000;    // ms (1 min)
+    private static final int GPS_TIMEOUT = 60000;               // ms (1 min)
+    private static final int ALLOWABLE_OUT_OF_RANGE_COUNTS = 3; // One count occurs per second
 
     // Mapping
+    private GoogleMap mMap;
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
@@ -92,9 +100,8 @@ public class MappingActivity extends FragmentActivity {
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
-    private ProgressBar mProgressBar;
-    private String mSampleFile;
     private String mPathToFile;
+    private String mSampleFile;
     private int mCurrentVolume = -1;
     private static final String AUDIO_FILE_EXT = ".3gp";
     private static final int RECORDING_LENGTH = 30000;
@@ -111,9 +118,10 @@ public class MappingActivity extends FragmentActivity {
     private TextView mVolumeText;
     private boolean mIsTextVisible = false;
 
-    // Error Message
+    // Misc UI Elements
     private TextView mErrorMessage;
-
+    private ProgressBar mProgressBar;
+    
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -133,7 +141,7 @@ public class MappingActivity extends FragmentActivity {
         try {
             mPathToFile = getExternalCacheDir().getAbsolutePath();
         } catch (NullPointerException e) {
-            Log.e(TAG, "onCreate: Error - " + e.getMessage());
+            Log.e(TAG, "onCreate: Error - " + e.toString());
             return;
         }
 
@@ -143,9 +151,7 @@ public class MappingActivity extends FragmentActivity {
         mLocationUpdateTimer = new Timer("GPS Update Event Timer", true);
         mAudioSampleTimer = new Timer("Audio Sampling Event Timer", true);
         mPointOfInterestTimer = new Timer("POI Update Event Timer", false);
-
-        mLocationClientService = new LocationClientService();
-
+        
         // Create Event Listener for the recording button
         ImageButton recordButton = (ImageButton) findViewById(R.id.rec_button);
         recordButton.setOnClickListener(new View.OnClickListener() {
@@ -172,7 +178,7 @@ public class MappingActivity extends FragmentActivity {
             }
         });
 
-        // Grab the volume bar object for later manipulation
+        // Set up members for various UI Elements
         mVolumeBar = findViewById(R.id.volume_bar);
         mVolumeText = (TextView) findViewById(R.id.volume_text);
         mProgressBar = (ProgressBar) findViewById(R.id.rec_progress);
@@ -184,6 +190,7 @@ public class MappingActivity extends FragmentActivity {
         getPermissions();
         if (mPermissionGranted && !mMapInitiated) {
             Log.d(TAG, "onCreate: Creating the map");
+            mLocationClientService = new LocationClientService();
             initMap();
         } else {
             Log.d(TAG, "onCreate: Permission denied or map already initialized");
@@ -316,7 +323,7 @@ public class MappingActivity extends FragmentActivity {
                 });
             }
         } catch (SecurityException e) {
-            Log.e(TAG, "getLocation: " + e.getMessage());
+            Log.e(TAG, "getLocation: " + e.toString());
         }
     }
 
@@ -346,6 +353,7 @@ public class MappingActivity extends FragmentActivity {
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
+    // TODO : This is gross
     private void updatePointsOfInterest() {
         if (mLocationClientService == null) {
             Log.w(TAG, "updatePointsOfInterest: Location Client Service is not initted");
@@ -445,6 +453,22 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void startRecording() {
+        // Check once before attempting to start recording...
+        Location target = new Location("target");
+        target.setLatitude(mTarget.getPosition().latitude);
+        target.setLongitude(mTarget.getPosition().longitude);
+
+        Location current = new Location("current");
+        current.setLatitude(mLastKnownCoords.latitude);
+        current.setLongitude(mLastKnownCoords.longitude);
+
+        if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
+            Log.d(TAG, "startRecording: Attempted to record, but out of range");
+            Toast.makeText(MappingActivity.this, "You are not close enough to the target",
+                    Toast.LENGTH_SHORT).show();
+            return;
+        }
+
         Log.d(TAG, "recordButtonClicked: Recording ON");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
         ImageButton button = (ImageButton) findViewById(R.id.rec_button);
@@ -469,7 +493,7 @@ public class MappingActivity extends FragmentActivity {
         } catch (IOException e) {
             Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
                     "being used by another process.", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "recordButtonClicked: Error - " + e.getMessage());
+            Log.e(TAG, "recordButtonClicked: Error - " + e.toString());
             return;
         }
 
@@ -479,6 +503,7 @@ public class MappingActivity extends FragmentActivity {
 
         new CountDownTimer(RECORDING_LENGTH, RECORDING_CHECK_RATE) {
             private double progress = PROGRESS_RATE;
+            private int unstableCounts = 0;
 
             public void onTick(long millisUntilFinished) {
                 Location target = new Location("target");
@@ -490,10 +515,13 @@ public class MappingActivity extends FragmentActivity {
                 current.setLongitude(mLastKnownCoords.longitude);
 
                 if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
-                    stopRecording();
-                    Toast.makeText(MappingActivity.this, "You have gone out of range",
-                            Toast.LENGTH_SHORT).show();
-                    cancel();
+                    unstableCounts++;
+                    if (unstableCounts > ALLOWABLE_OUT_OF_RANGE_COUNTS) {
+                        stopRecording();
+                        Toast.makeText(MappingActivity.this, "You have gone out of range",
+                                Toast.LENGTH_SHORT).show();
+                        this.cancel();
+                    }
                 }
 
                 progress += PROGRESS_RATE;
@@ -527,6 +555,7 @@ public class MappingActivity extends FragmentActivity {
             try {
                 mAudioSampler.stop();
             } catch (Exception e) {
+                // Really unstable... Can throw an error if called to soon after instantiation...
                 Log.e(TAG, "stopRecording: Error trying to stop media recorder.\n\tError - " +
                         e.toString());
             }
@@ -546,11 +575,9 @@ public class MappingActivity extends FragmentActivity {
     private void sampleAudio() {
         // Take a new sample and average it with the last one
         if ((mAudioSampler != null) && (!mIsTimeout)) {
-            int sample = mAudioSampler.getMaxAmplitude();
-            Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
+            mCurrentVolume = mAudioSampler.getMaxAmplitude();
+            //Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
 
-            // Update the volume indicator
-            mCurrentVolume = sample;
             updateVolumeBar();
             updateVolumeText();
         }
