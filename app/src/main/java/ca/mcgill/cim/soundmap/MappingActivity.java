@@ -1,7 +1,6 @@
 package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
-import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.media.MediaRecorder;
@@ -12,6 +11,7 @@ import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
 import android.util.Log;
+import android.util.Pair;
 import android.view.View;
 import android.widget.ImageButton;
 import android.widget.ProgressBar;
@@ -35,6 +35,7 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 
 import java.io.IOException;
+import java.util.List;
 import java.util.Timer;
 import java.util.TimerTask;
 
@@ -70,9 +71,12 @@ public class MappingActivity extends FragmentActivity {
     private static final int LOCATION_UPDATE_RATE = 1000; // ms
     private Timer mAudioSampleTimer;
     private static final int AUDIO_SAMPLE_RATE = 100;     // ms
+    private Timer mPointOfInterestTimer;
+    private static final int POI_UPDATE_RATE = 10000;     // ms
 
     // GPS Localization
     private GoogleMap mMap;
+    private LocationClientService mlocationClientService;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
     private float mLastKnownBearing = DEFAULT_BEARING;
     private LatLng mLastKnownCoords = mDefaultLocation;
@@ -141,6 +145,9 @@ public class MappingActivity extends FragmentActivity {
         // $2 == Run as Daemon
         mLocationUpdateTimer = new Timer("GPS Update Event Timer", true);
         mAudioSampleTimer = new Timer("Audio Sampling Event Timer", true);
+        mPointOfInterestTimer = new Timer("POI Update Event Timer", true);
+
+        mlocationClientService = new LocationClientService();
 
         // Create Event Listener for the recording button
         ImageButton recordButton = (ImageButton) findViewById(R.id.rec_button);
@@ -252,6 +259,7 @@ public class MappingActivity extends FragmentActivity {
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
+                    mPointOfInterestTimer.schedule(new UpdatePOITask(), 0, LOCATION_UPDATE_RATE);
 
                     // #############################################################################
                     // #############################################################################
@@ -347,6 +355,30 @@ public class MappingActivity extends FragmentActivity {
                 .bearing(mMap.getCameraPosition().bearing) // Don't override bearing either
                 .build();
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+    }
+
+    private void updatePointsOfInterest() {
+        Log.d(TAG, "updatePointsOfInterest: Attempting to add target marker");
+        try {
+            Pair<String, LatLng> target =
+                    mlocationClientService.getTargetLocation(mLastKnownCoords);
+
+            addMarker(target.second, target.first);
+        } catch (Exception e) {
+            Log.e(TAG, "updatePointsOfInterest: Error - " + e.getMessage());
+        }
+
+        Log.d(TAG, "updatePointsOfInterest: Attempting to add user markers");
+        try {
+            List<Pair<String, LatLng>> users =
+                    mlocationClientService.getOtherUsers();
+
+            for (Pair<String, LatLng> user : users) {
+                addPerson(user.second, user.first);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "updatePointsOfInterest: Error - " + e.getMessage());
+        }
     }
 
     private void addPerson(LatLng latLng, String user) {
@@ -568,6 +600,14 @@ public class MappingActivity extends FragmentActivity {
         @Override
         public void run() {
             sampleAudio();
+        }
+    }
+
+    // A TimerTask to sample audio at a consistent event rate
+    private class UpdatePOITask extends TimerTask {
+        @Override
+        public void run() {
+            updatePointsOfInterest();
         }
     }
 

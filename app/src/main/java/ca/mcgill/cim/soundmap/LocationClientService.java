@@ -6,6 +6,7 @@ import android.util.Pair;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.io.IOException;
+import java.security.spec.ECField;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -47,18 +48,26 @@ public class LocationClientService {
              *      McGill:45.504812985241564,-73.57715606689453
              */
 
+            String res = response.body().toString();
+            if (res == null || !res.contains(":") || !res.contains(",")) {
+                return new Pair<>("DEFAULT", mDefaultLocation);
+            }
+
             // The name tag of a location should appear before a ":"
-            String[] data = response.body().toString().split(":");
+            String[] data = res.split(":");
             String tag = data[0];
 
             // The coordinates should follow, separated by a ","
             String[] coords = data[1].split(",");
-            Double lat = Double.parseDouble(coords[0]);
-            Double lng = Double.parseDouble(coords[1]);
-            LatLng location = new LatLng(lat, lng);
-
-            return new Pair<>(tag, location);
-
+            try {
+                Double lat = Double.parseDouble(coords[0]);
+                Double lng = Double.parseDouble(coords[1]);
+                LatLng location = new LatLng(lat, lng);
+                return new Pair<>(tag, location);
+            } catch (Exception e) {
+                Log.e(TAG, "getTargetLocation: Could not parse coordinates");
+                return new Pair<>("DEFAULT", mDefaultLocation);
+            }
         } catch (IOException e) {
             Log.e(TAG, "getTargetLocation: DID NOT USE SERVER LOCATION");
             Log.e(TAG, "uploadFile: Error - " + e.getMessage());
@@ -87,7 +96,12 @@ public class LocationClientService {
              *      Foo:45.50,-73.57;Bar:45.55,-73.23
              */
 
-            String[] users = response.body().toString().split(";");
+            String res = response.body().toString();
+            if (res == null || !res.contains(":") || !res.contains(",")) {
+                return null;
+            }
+
+            String[] users = res.split(";");
 
             for (String user : users) {
                 // The name tag of a location should appear before a ":"
@@ -96,11 +110,14 @@ public class LocationClientService {
 
                 // The coordinates should follow, separated by a ","
                 String[] coords = data[1].split(",");
-                Double lat = Double.parseDouble(coords[0]);
-                Double lng = Double.parseDouble(coords[1]);
-                LatLng location = new LatLng(lat, lng);
-
-                result.add(new Pair<String, LatLng>(name, location));
+                try {
+                    Double lat = Double.parseDouble(coords[0]);
+                    Double lng = Double.parseDouble(coords[1]);
+                    LatLng location = new LatLng(lat, lng);
+                    result.add(new Pair<String, LatLng>(name, location));
+                } catch (Exception e) {
+                    Log.e(TAG, "getOtherUsers: Could not parse user coordintates. Skipping...");
+                }
             }
         } catch (IOException e) {
             Log.e(TAG, "getTargetLocation: DID NOT USE SERVER LOCATION");
