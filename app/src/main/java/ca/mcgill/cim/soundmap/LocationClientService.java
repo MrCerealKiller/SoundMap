@@ -6,7 +6,6 @@ import android.util.Pair;
 import com.google.android.gms.maps.model.LatLng;
 
 import java.io.IOException;
-import java.security.spec.ECField;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -17,7 +16,10 @@ import okhttp3.Response;
 public class LocationClientService {
 
     private static final String TAG = "LocationClientService";
-    
+
+    private static final String PING_URL =
+            "http://sandeepmanjanna.dlinkddns.com:5000/";
+
     private static final String LOCATION_HOST_URL =
             "http://sandeepmanjanna.dlinkddns.com:5000/location";
 
@@ -29,6 +31,21 @@ public class LocationClientService {
 
     public LocationClientService() {
         mClient = new OkHttpClient();
+    }
+
+    public boolean checkConnection() {
+        Runtime runtime = Runtime.getRuntime();
+        try {
+            Process  ping = runtime.exec("/system/bin/ping -c " + PING_URL);
+            int res = ping.waitFor();
+            if (res == 0) {
+                return true;
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "checkConnection: Error - " + e.toString());
+        }
+
+        return false;
     }
 
     public Pair<String, LatLng> getTargetLocation(LatLng userLocation) {
@@ -48,7 +65,7 @@ public class LocationClientService {
              *      McGill:45.504812985241564,-73.57715606689453
              */
 
-            String res = response.body().toString();
+            String res = response.body().string();
             if (res == null || !res.contains(":") || !res.contains(",")) {
                 return new Pair<>("DEFAULT", mDefaultLocation);
             }
@@ -58,13 +75,18 @@ public class LocationClientService {
             String tag = data[0];
 
             // The coordinates should follow, separated by a ","
-            String[] coords = data[1].split(",");
-            try {
-                Double lat = Double.parseDouble(coords[0]);
-                Double lng = Double.parseDouble(coords[1]);
-                LatLng location = new LatLng(lat, lng);
-                return new Pair<>(tag, location);
-            } catch (Exception e) {
+            if (data[1] != null) {
+                String[] coords = data[1].split(",");
+                try {
+                    Double lat = Double.parseDouble(coords[0]);
+                    Double lng = Double.parseDouble(coords[1]);
+                    LatLng location = new LatLng(lat, lng);
+                    return new Pair<>(tag, location);
+                } catch (Exception e) {
+                    Log.e(TAG, "getTargetLocation: Could not parse coordinates");
+                    return new Pair<>("DEFAULT", mDefaultLocation);
+                }
+            } else {
                 Log.e(TAG, "getTargetLocation: Could not parse coordinates");
                 return new Pair<>("DEFAULT", mDefaultLocation);
             }
@@ -96,7 +118,7 @@ public class LocationClientService {
              *      Foo:45.50,-73.57;Bar:45.55,-73.23
              */
 
-            String res = response.body().toString();
+            String res = response.body().string();
             if (res == null || !res.contains(":") || !res.contains(",")) {
                 return null;
             }
@@ -108,15 +130,17 @@ public class LocationClientService {
                 String[] data = user.split(":");
                 String name = data[0];
 
-                // The coordinates should follow, separated by a ","
-                String[] coords = data[1].split(",");
-                try {
-                    Double lat = Double.parseDouble(coords[0]);
-                    Double lng = Double.parseDouble(coords[1]);
-                    LatLng location = new LatLng(lat, lng);
-                    result.add(new Pair<String, LatLng>(name, location));
-                } catch (Exception e) {
-                    Log.e(TAG, "getOtherUsers: Could not parse user coordintates. Skipping...");
+                if (data[1] != null) {
+                    // The coordinates should follow, separated by a ","
+                    String[] coords = data[1].split(",");
+                    try {
+                        Double lat = Double.parseDouble(coords[0]);
+                        Double lng = Double.parseDouble(coords[1]);
+                        LatLng location = new LatLng(lat, lng);
+                        result.add(new Pair<String, LatLng>(name, location));
+                    } catch (Exception e) {
+                        Log.e(TAG, "getOtherUsers: Could not parse user coordintates. Skipping...");
+                    }
                 }
             }
         } catch (IOException e) {

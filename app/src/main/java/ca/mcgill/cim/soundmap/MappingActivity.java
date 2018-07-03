@@ -72,11 +72,11 @@ public class MappingActivity extends FragmentActivity {
     private Timer mAudioSampleTimer;
     private static final int AUDIO_SAMPLE_RATE = 100;     // ms
     private Timer mPointOfInterestTimer;
-    private static final int POI_UPDATE_RATE = 10000;     // ms
+    private static final int POI_UPDATE_RATE = 30000;     // ms
 
     // GPS Localization
     private GoogleMap mMap;
-    private LocationClientService mlocationClientService;
+    private LocationClientService mLocationClientService;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
     private float mLastKnownBearing = DEFAULT_BEARING;
     private LatLng mLastKnownCoords = mDefaultLocation;
@@ -94,11 +94,8 @@ public class MappingActivity extends FragmentActivity {
     private ProgressBar mProgressBar;
     private String mSampleFile;
     private String mPathToFile;
-    private Data mSamples;
     private int mCurrentVolume = -1;
-    private double mAverageIntensity = 0;
     private static final String AUDIO_FILE_EXT = ".3gp";
-    private static final int POOL_SIZE = 110;
     private static final int RECORDING_LENGTH = 30000;
     private static final int RECORDING_CHECK_RATE = 1000;
     private static final double PROGRESS_RATE =
@@ -130,9 +127,6 @@ public class MappingActivity extends FragmentActivity {
         }
         Log.d(TAG, "onCreate: User identified as: " + mUser);
 
-        // Initialize the Samples ADT
-        mSamples = new Data();
-
         try {
             mPathToFile = getExternalCacheDir().getAbsolutePath();
         } catch (NullPointerException e) {
@@ -145,9 +139,9 @@ public class MappingActivity extends FragmentActivity {
         // $2 == Run as Daemon
         mLocationUpdateTimer = new Timer("GPS Update Event Timer", true);
         mAudioSampleTimer = new Timer("Audio Sampling Event Timer", true);
-        mPointOfInterestTimer = new Timer("POI Update Event Timer", true);
+        mPointOfInterestTimer = new Timer("POI Update Event Timer", false);
 
-        mlocationClientService = new LocationClientService();
+        mLocationClientService = new LocationClientService();
 
         // Create Event Listener for the recording button
         ImageButton recordButton = (ImageButton) findViewById(R.id.rec_button);
@@ -259,18 +253,7 @@ public class MappingActivity extends FragmentActivity {
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
-                    mPointOfInterestTimer.schedule(new UpdatePOITask(), 0, LOCATION_UPDATE_RATE);
-
-                    // #############################################################################
-                    // #############################################################################
-
-                    // Just for Testing Purposes for now
-
-                    addMarker(mDefaultLocation, "McGill");
-                    addPerson(new LatLng(45.50659129493268, -73.57684249283386), "Ghostie");
-
-                    // #############################################################################
-                    // #############################################################################
+                    mPointOfInterestTimer.schedule(new UpdatePOITask(), 0, POI_UPDATE_RATE);
                 }
             }
         });
@@ -358,31 +341,54 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void updatePointsOfInterest() {
+        if (mLocationClientService == null) {
+            Log.w(TAG, "updatePointsOfInterest: Location Client Service is not initted");
+            return;
+        }
+
+        runOnUiThread(new Runnable(){
+            public void run() {
+                mMap.clear();
+            }
+        });
+
         Log.d(TAG, "updatePointsOfInterest: Attempting to add target marker");
         try {
-            Pair<String, LatLng> target =
-                    mlocationClientService.getTargetLocation(mLastKnownCoords);
+            final Pair<String, LatLng> target =
+                    mLocationClientService.getTargetLocation(mLastKnownCoords);
 
-            addMarker(target.second, target.first);
+            if (target != null && target.first != null && target.second != null) {
+                runOnUiThread(new Runnable(){
+                    public void run() {
+                        addMarker(target.second, target.first);
+                    }
+                });
+            }
         } catch (Exception e) {
-            Log.e(TAG, "updatePointsOfInterest: Error - " + e.getMessage());
+            Log.e(TAG, "updatePointsOfInterest: Error - " + e.toString());
         }
 
         Log.d(TAG, "updatePointsOfInterest: Attempting to add user markers");
         try {
             List<Pair<String, LatLng>> users =
-                    mlocationClientService.getOtherUsers();
+                    mLocationClientService.getOtherUsers();
 
-            for (Pair<String, LatLng> user : users) {
-                addPerson(user.second, user.first);
+            if (!(users == null || users.isEmpty())) {
+                for (final Pair<String, LatLng> user : users) {
+                    runOnUiThread(new Runnable(){
+                        public void run() {
+                            addPerson(user.second, user.first);
+                        }
+                    });
+                }
             }
         } catch (Exception e) {
-            Log.e(TAG, "updatePointsOfInterest: Error - " + e.getMessage());
+            Log.e(TAG, "updatePointsOfInterest: Error - " + e.toString());
         }
     }
 
     private void addPerson(LatLng latLng, String user) {
-        mTarget = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .title(user)
                 .alpha((float)DEFAULT_MARKER_OPACITY)
@@ -391,7 +397,7 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void addMarker(LatLng latLng, String desc) {
-        mTarget = mMap.addMarker(new MarkerOptions()
+        mMap.addMarker(new MarkerOptions()
                 .position(latLng)
                 .title(desc)
                 .alpha((float)DEFAULT_MARKER_OPACITY)
@@ -413,7 +419,7 @@ public class MappingActivity extends FragmentActivity {
 
         if (mIsRecording) {
             Toast.makeText(this, "Please wait for the recording to finish",
-                    Toast.LENGTH_SHORT).show();;
+                    Toast.LENGTH_SHORT).show();
         } else {
             startRecording();
         }
@@ -429,7 +435,7 @@ public class MappingActivity extends FragmentActivity {
         mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
         mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
 
-        if (mPathToFile == null || mPathToFile.trim() == "") {
+        if (mPathToFile == null || mPathToFile.trim().equals("")) {
             Toast.makeText(this, "Cannot record.. Contact admin", Toast.LENGTH_LONG).show();
             return;
         } else {
@@ -517,39 +523,16 @@ public class MappingActivity extends FragmentActivity {
         if ((mAudioSampler != null) && (!mIsTimeout)) {
             int sample = mAudioSampler.getMaxAmplitude();
             Log.i(TAG, "sampleAudio: Sample - " + Integer.toString(sample));
-            // Currently all processing will be done off-board, so the next line is commented out
-            //mSamples.push(sample, mLastKnownCoords);
 
             // Update the volume indicator
             mCurrentVolume = sample;
             updateVolumeBar();
             updateVolumeText();
         }
-
-        // If the sample set has reached the desired pool size,
-        // pack the data into an average to transfer to the server
-        // Currently all processing will be done off-board, so the next control sequence is
-        // commented out
-        //if (mSamples.size() >= POOL_SIZE) {
-        //    packSamples();
-        //}
-    }
-
-    // Calculate the mean of the data set and then clear it
-    private void packSamples() {
-        Log.d(TAG, "packSamples: Packing samples for transfer");
-
-        if (mSamples.isValid()) {
-            mAverageIntensity = mSamples.getAverageIntensity();
-        } else {
-            Log.w(TAG, "packSamples: Data set not valid");
-            mAverageIntensity = 0.0;
-        }
-        mSamples.clear();
     }
 
     private void uploadRecording() {
-        if (mSampleFile == null || mSampleFile.trim() == "") {
+        if (mSampleFile == null || mSampleFile.trim().equals("")) {
             Log.w(TAG, "uploadRecording: Could not find an appropriate source file path");
             return;
         }
@@ -605,6 +588,7 @@ public class MappingActivity extends FragmentActivity {
 
     // A TimerTask to sample audio at a consistent event rate
     private class UpdatePOITask extends TimerTask {
+
         @Override
         public void run() {
             updatePointsOfInterest();
