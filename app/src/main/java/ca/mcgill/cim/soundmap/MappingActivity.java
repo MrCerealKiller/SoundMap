@@ -1,6 +1,7 @@
 package ca.mcgill.cim.soundmap;
 
 import android.Manifest;
+import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.location.Location;
 import android.media.MediaRecorder;
@@ -88,9 +89,11 @@ public class MappingActivity extends FragmentActivity {
     private MediaRecorder mAudioSampler;
     private ProgressBar mProgressBar;
     private String mSampleFile;
+    private String mPathToFile;
     private Data mSamples;
     private int mCurrentVolume = -1;
     private double mAverageIntensity = 0;
+    private static final String AUDIO_FILE_EXT = ".3gp";
     private static final int POOL_SIZE = 110;
     private static final int RECORDING_LENGTH = 30000;
     private static final int RECORDING_CHECK_RATE = 1000;
@@ -114,12 +117,20 @@ public class MappingActivity extends FragmentActivity {
 
         Log.d(TAG, "onCreate: Initializing the mapping activity");
 
+        // Get user from landing page
+        Bundle extras = getIntent().getExtras();
+        if (extras.containsKey("email")) {
+            mUser = extras.getString("email");
+        } else {
+            mUser = "anon";
+        }
+        Log.d(TAG, "onCreate: User identified as: " + mUser);
+
         // Initialize the Samples ADT
         mSamples = new Data();
 
         try {
-            mSampleFile = getExternalCacheDir().getAbsolutePath();
-            mSampleFile += "/samples.3gp";
+            mPathToFile = getExternalCacheDir().getAbsolutePath();
         } catch (NullPointerException e) {
             Log.e(TAG, "onCreate: Error - " + e.getMessage());
             return;
@@ -384,8 +395,16 @@ public class MappingActivity extends FragmentActivity {
         mAudioSampler = new MediaRecorder();
         mAudioSampler.setAudioSource(MediaRecorder.AudioSource.VOICE_RECOGNITION);
         mAudioSampler.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
-        mAudioSampler.setOutputFile(mSampleFile);
         mAudioSampler.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
+
+        if (mPathToFile == null || mPathToFile.trim() == "") {
+            Toast.makeText(this, "Cannot record.. Contact admin", Toast.LENGTH_LONG).show();
+            return;
+        } else {
+            mSampleFile = mPathToFile + "/" + mUser + "_"
+                    + Long.toString(System.currentTimeMillis()) + AUDIO_FILE_EXT;
+            mAudioSampler.setOutputFile(mSampleFile);
+        }
 
         try {
             mAudioSampler.prepare();
@@ -498,8 +517,12 @@ public class MappingActivity extends FragmentActivity {
     }
 
     private void uploadRecording() {
-        // TODO : GET USER INFO FROM INTENT
-        FileTransferService fts = new FileTransferService(mSampleFile, "develop", mLastKnownCoords);
+        if (mSampleFile == null || mSampleFile.trim() == "") {
+            Log.w(TAG, "uploadRecording: Could not find an appropriate source file path");
+            return;
+        }
+
+        FileTransferService fts = new FileTransferService(mSampleFile, mUser, mLastKnownCoords);
         fts.execute();
     }
 
