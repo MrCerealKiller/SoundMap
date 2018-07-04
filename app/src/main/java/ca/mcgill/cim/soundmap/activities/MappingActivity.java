@@ -79,11 +79,8 @@ public class MappingActivity extends FragmentActivity {
     private static final int LOCATION_UPDATE_RATE = 1000; // ms
     private Timer mAudioSampleTimer;
     private static final int AUDIO_SAMPLE_RATE = 100;     // ms
-    private Timer mPointOfInterestTimer;
-    private static final int POI_UPDATE_RATE = 30000;     // ms
 
     // GPS Localization
-    private LocationClientService mLocationClientService;
     private final LatLng mDefaultLocation = new LatLng(45.504812985241564, -73.57715606689453);
     private float mLastKnownBearing = DEFAULT_BEARING;
     private LatLng mLastKnownCoords = mDefaultLocation;
@@ -96,7 +93,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
-    private static final double TARGET_DISTANCE_THRESHOLD = 100; // m
+    private static final double TARGET_DISTANCE_THRESHOLD = 10; // m
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
@@ -150,8 +147,7 @@ public class MappingActivity extends FragmentActivity {
         // $2 == Run as Daemon
         mLocationUpdateTimer = new Timer("GPS Update Event Timer", true);
         mAudioSampleTimer = new Timer("Audio Sampling Event Timer", true);
-        mPointOfInterestTimer = new Timer("POI Update Event Timer", false);
-        
+
         // Create Event Listener for the recording button
         ImageButton recordButton = (ImageButton) findViewById(R.id.rec_button);
         recordButton.setOnClickListener(new View.OnClickListener() {
@@ -190,7 +186,6 @@ public class MappingActivity extends FragmentActivity {
         getPermissions();
         if (mPermissionGranted && !mMapInitiated) {
             Log.d(TAG, "onCreate: Creating the map");
-            mLocationClientService = new LocationClientService();
             initMap();
         } else {
             Log.d(TAG, "onCreate: Permission denied or map already initialized");
@@ -266,7 +261,7 @@ public class MappingActivity extends FragmentActivity {
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
-                    mPointOfInterestTimer.schedule(new UpdatePOITask(), 0, POI_UPDATE_RATE);
+                    requestMarkerUpdate();
                 }
             }
         });
@@ -353,64 +348,31 @@ public class MappingActivity extends FragmentActivity {
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
     }
 
-    // TODO : This is gross
-    private void updatePointsOfInterest() {
-        if (mLocationClientService == null) {
-            Log.w(TAG, "updatePointsOfInterest: Location Client Service is not initted");
-            return;
+    private void requestMarkerUpdate() {
+        mMap.clear();
+
+        Toast.makeText(this, "Waiting for next location from server", Toast.LENGTH_SHORT).show();
+
+        LocationClientService lcs = new LocationClientService(this, mLastKnownCoords);
+        lcs.execute();
+    }
+
+    public void onRequestMarkerUpdateComplete(Pair<String, LatLng> target,
+                                              List<Pair<String, LatLng>> users) {
+
+        if (target != null && target.first != null && target.second != null) {
+            mErrorMessage.setVisibility(View.GONE);
+            addMarker(target.second, target.first);
+        } else {
+            mErrorMessage.setVisibility(View.VISIBLE);
         }
 
-        // Clear previous data
-        runOnUiThread(new Runnable(){
-            public void run() {
-                mMap.clear();
-            }
-        });
-
-        Log.d(TAG, "updatePointsOfInterest: Attempting to add target marker");
-        try {
-            final Pair<String, LatLng> target =
-                    mLocationClientService.getTargetLocation(mLastKnownCoords);
-
-            if (target != null && target.first != null && target.second != null) {
-                runOnUiThread(new Runnable(){
-                    public void run() {
-                        mErrorMessage.setVisibility(View.GONE);
-                        addMarker(target.second, target.first);
-                    }
-                });
-            } else {
-                runOnUiThread(new Runnable(){
-                    public void run() {
-                        mErrorMessage.setVisibility(View.VISIBLE);
-                    }
-                });
-            }
-        } catch (Exception e) {
-            Log.e(TAG, "updatePointsOfInterest: Error - " + e.toString());
-            runOnUiThread(new Runnable(){
-                public void run() {
-                    mErrorMessage.setVisibility(View.VISIBLE);
-                }
-            });
-        }
-
-        Log.d(TAG, "updatePointsOfInterest: Attempting to add user markers");
-        try {
-            List<Pair<String, LatLng>> users =
-                    mLocationClientService.getOtherUsers();
-
-            if (!(users == null || users.isEmpty())) {
-                for (final Pair<String, LatLng> user : users) {
-                    runOnUiThread(new Runnable(){
-                        public void run() {
-                            addPerson(user.second, user.first);
-                        }
-                    });
+        if (!(users == null || users.isEmpty())) {
+            for (Pair<String, LatLng> user : users) {
+                if (user.first != null && user.second != null) {
+                    addPerson(user.second, user.first);
                 }
             }
-        } catch (Exception e) {
-            Log.e(TAG, "updatePointsOfInterest: Error - " + e.toString());
         }
     }
 
@@ -531,6 +493,7 @@ public class MappingActivity extends FragmentActivity {
             public void onFinish() {
                 stopRecording();
                 uploadRecording();
+                requestMarkerUpdate();
             }
         }.start();
 
@@ -637,15 +600,6 @@ public class MappingActivity extends FragmentActivity {
         @Override
         public void run() {
             sampleAudio();
-        }
-    }
-
-    // A TimerTask to sample audio at a consistent event rate
-    private class UpdatePOITask extends TimerTask {
-
-        @Override
-        public void run() {
-            updatePointsOfInterest();
         }
     }
 

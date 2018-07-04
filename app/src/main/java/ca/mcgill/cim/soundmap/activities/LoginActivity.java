@@ -40,7 +40,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     public static final Pattern PIN_REGEX =
             Pattern.compile("^[0-9]{4}$", Pattern.CASE_INSENSITIVE);
     public static final Pattern USER_REGEX =
-            Pattern.compile("^[^\\s1-9\\.]+$", Pattern.CASE_INSENSITIVE);
+            Pattern.compile("^[^\\s\\.]+$", Pattern.CASE_INSENSITIVE);
 
     private UserLoginTask mAuthTask = null;
 

@@ -1,5 +1,6 @@
 package ca.mcgill.cim.soundmap.services;
 
+import android.os.AsyncTask;
 import android.util.Log;
 import android.util.Pair;
 
@@ -9,12 +10,13 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 
+import ca.mcgill.cim.soundmap.activities.MappingActivity;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
 
-public class LocationClientService {
+public class LocationClientService extends AsyncTask<Void, Void, Void> {
 
     private static final String TAG = "LocationClientService";
 
@@ -24,14 +26,42 @@ public class LocationClientService {
     private static final String USERS_HOST_URL =
             "http://sandeepmanjanna.dlinkddns.com:5000/users";
 
-    public LocationClientService() {}
+    private MappingActivity mCalledFrom;
+    private LatLng mUserLocation;
 
-    public Pair<String, LatLng> getTargetLocation(LatLng userLocation) {
+    public LocationClientService(MappingActivity calledFrom, LatLng userLocation) {
+        Log.d(TAG, "LocationClientService: Starting Location Client Service");
+
+        mCalledFrom = calledFrom;
+        mUserLocation = userLocation;
+    }
+
+    private Pair<String, LatLng> mTarget;
+    private List<Pair<String, LatLng>> mUsers;
+
+    @Override
+    protected void onPreExecute() {
+        super.onPreExecute();
+    }
+
+    @Override
+    protected Void doInBackground(Void... params) {
+        mTarget = getTargetLocation();
+        mUsers = getOtherUsers();
+        return null;
+    }
+
+    @Override
+    protected void onPostExecute(Void result) {
+        mCalledFrom.onRequestMarkerUpdateComplete(mTarget, mUsers);
+    }
+
+    private Pair<String, LatLng> getTargetLocation() {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url(LOCATION_HOST_URL)
-                .header("lat", Double.toString(userLocation.latitude))
-                .header("lng", Double.toString(userLocation.longitude))
+                .header("lat", Double.toString(mUserLocation.latitude))
+                .header("lng", Double.toString(mUserLocation.longitude))
                 .build();
 
         // Post the Request using the OkHttp Client
@@ -76,7 +106,7 @@ public class LocationClientService {
         }
     }
 
-    public List<Pair<String, LatLng>> getOtherUsers() {
+    private List<Pair<String, LatLng>> getOtherUsers() {
         // TODO : This will be a heavy computation for lots of users, but should be fine for
         // the assumed scale at this time.
 
