@@ -1,5 +1,7 @@
 package ca.mcgill.cim.soundmap.services;
 
+import android.location.Address;
+import android.location.Geocoder;
 import android.os.AsyncTask;
 import android.util.Log;
 import android.util.Pair;
@@ -89,7 +91,22 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
                 try {
                     Double lat = Double.parseDouble(coords[0]);
                     Double lng = Double.parseDouble(coords[1]);
-                    LatLng location = new LatLng(lat, lng);
+                    LatLng location;
+
+                    // Checks for an address at the given location
+                    Geocoder gc = new Geocoder(mCalledFrom.getApplicationContext());
+                    List<Address> address = gc.getFromLocation(lat, lng, 1);
+
+                    // If there is no address at that location, so use the raw target
+                    if (address.isEmpty()) {
+                        location = new LatLng(lat, lng);
+                    // If there is an address, the raw target may be unreachable,
+                    // user the coords of the street address instead of the raw target
+                    } else {
+                        location = new LatLng (address.get(0).getLatitude(),
+                                               address.get(0).getLongitude());
+                    }
+
                     return new Pair<>(tag, location);
                 } catch (Exception e) {
                     Log.e(TAG, "getTargetLocation: Could not parse coordinates");
