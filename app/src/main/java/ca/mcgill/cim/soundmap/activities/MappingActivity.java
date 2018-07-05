@@ -66,6 +66,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mPermissionGranted = false;
     private boolean mMapInitiated = false;
     private boolean mIsTimeout = false;
+    private boolean mIsStartedTask = false;
     private boolean mIsRecording = false;
     private boolean mIsDebugging = false;
 
@@ -93,7 +94,7 @@ public class MappingActivity extends FragmentActivity {
     private boolean mIsViewInitted = false;
     private Marker mTarget;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
-    private static final double TARGET_DISTANCE_THRESHOLD = 10; // m
+    private static final double TARGET_DISTANCE_THRESHOLD = 20; // m
 
     // Audio Sampling
     private MediaRecorder mAudioSampler;
@@ -261,7 +262,6 @@ public class MappingActivity extends FragmentActivity {
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
-                    requestMarkerUpdate();
                 }
             }
         });
@@ -351,10 +351,12 @@ public class MappingActivity extends FragmentActivity {
     private void requestMarkerUpdate() {
         mMap.clear();
 
-        Toast.makeText(this, "Waiting for next location from server", Toast.LENGTH_SHORT).show();
+        if (mIsStartedTask) {
+            Toast.makeText(this, "Waiting for next location from server", Toast.LENGTH_SHORT).show();
 
-        LocationClientService lcs = new LocationClientService(this, mUser, mLastKnownCoords);
-        lcs.execute();
+            LocationClientService lcs = new LocationClientService(this, mUser, mLastKnownCoords);
+            lcs.execute();
+        }
     }
 
     public void onRequestMarkerUpdateComplete(Pair<String, LatLng> target,
@@ -416,19 +418,25 @@ public class MappingActivity extends FragmentActivity {
 
     private void startRecording() {
         // Check once before attempting to start recording...
-        Location target = new Location("target");
-        target.setLatitude(mTarget.getPosition().latitude);
-        target.setLongitude(mTarget.getPosition().longitude);
+        if (mIsStartedTask) {
+            Location target = new Location("target");
+            target.setLatitude(mTarget.getPosition().latitude);
+            target.setLongitude(mTarget.getPosition().longitude);
 
-        Location current = new Location("current");
-        current.setLatitude(mLastKnownCoords.latitude);
-        current.setLongitude(mLastKnownCoords.longitude);
+            Location current = new Location("current");
+            current.setLatitude(mLastKnownCoords.latitude);
+            current.setLongitude(mLastKnownCoords.longitude);
 
-        if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
-            Log.d(TAG, "startRecording: Attempted to record, but out of range");
-            Toast.makeText(MappingActivity.this, "You are not close enough to the target",
-                    Toast.LENGTH_SHORT).show();
-            return;
+            if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
+                Log.d(TAG, "startRecording: Attempted to record, but out of range");
+                Toast.makeText(MappingActivity.this, "You are not close enough to the target",
+                        Toast.LENGTH_SHORT).show();
+                return;
+            }
+        } else {
+            addMarker(mLastKnownCoords, "Initial Position");
+            findViewById(R.id.info_text).setVisibility(View.INVISIBLE);
+            mIsStartedTask = true;
         }
 
         Log.d(TAG, "recordButtonClicked: Recording ON");

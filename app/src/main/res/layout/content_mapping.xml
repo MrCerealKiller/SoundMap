@@ -37,8 +37,8 @@
         <TextView
             android:id="@+id/error_text"
             android:layout_width="match_parent"
-            android:layout_height="80dp"
-            android:layout_gravity="center"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|top"
             android:padding="16dp"
             android:background="@color/colorAccent"
             android:textSize="20sp"
@@ -46,6 +46,19 @@
             android:textAlignment="center"
             android:text="@string/server_connection_error"
             android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/info_text"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_gravity="center_horizontal|top"
+            android:padding="16dp"
+            android:background="@color/colorPrimary"
+            android:textSize="20sp"
+            android:textColor="@color/white"
+            android:textAlignment="center"
+            android:text="@string/instructions_banner"
+            android:visibility="visible" />
 
         <View
             android:id="@+id/volume_bar"

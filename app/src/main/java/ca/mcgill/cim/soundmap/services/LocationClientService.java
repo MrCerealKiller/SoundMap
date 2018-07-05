@@ -11,6 +11,7 @@ import com.google.android.gms.maps.model.LatLng;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 
 import ca.mcgill.cim.soundmap.activities.MappingActivity;
 import okhttp3.OkHttpClient;
@@ -61,7 +62,12 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
     }
 
     private Pair<String, LatLng> getTargetLocation() {
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = new OkHttpClient()
+                .newBuilder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
+
         Request request = new Request.Builder()
                 .url(LOCATION_HOST_URL)
                 .header("username", mUser)
@@ -130,7 +136,12 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
         // TODO : This will be a heavy computation for lots of users, but should be fine for
         // the assumed scale at this time.
 
-        OkHttpClient client = new OkHttpClient();
+        OkHttpClient client = new OkHttpClient()
+                .newBuilder()
+                .connectTimeout(60, TimeUnit.SECONDS)
+                .readTimeout(60, TimeUnit.SECONDS)
+                .build();
+
         Request request = new Request.Builder()
                 .url(USERS_HOST_URL)
                 .build();
