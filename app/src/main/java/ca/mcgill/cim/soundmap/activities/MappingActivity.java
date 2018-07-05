@@ -353,7 +353,7 @@ public class MappingActivity extends FragmentActivity {
 
         Toast.makeText(this, "Waiting for next location from server", Toast.LENGTH_SHORT).show();
 
-        LocationClientService lcs = new LocationClientService(this, mLastKnownCoords);
+        LocationClientService lcs = new LocationClientService(this, mUser, mLastKnownCoords);
         lcs.execute();
     }
 

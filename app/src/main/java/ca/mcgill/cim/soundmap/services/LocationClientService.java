@@ -29,12 +29,14 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
             "http://sandeepmanjanna.dlinkddns.com:5000/users";
 
     private MappingActivity mCalledFrom;
+    private String mUser;
     private LatLng mUserLocation;
 
-    public LocationClientService(MappingActivity calledFrom, LatLng userLocation) {
+    public LocationClientService(MappingActivity calledFrom, String user, LatLng userLocation) {
         Log.d(TAG, "LocationClientService: Starting Location Client Service");
 
         mCalledFrom = calledFrom;
+        mUser = user;
         mUserLocation = userLocation;
     }
 
@@ -62,6 +64,7 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
         OkHttpClient client = new OkHttpClient();
         Request request = new Request.Builder()
                 .url(LOCATION_HOST_URL)
+                .header("username", mUser)
                 .header("lat", Double.toString(mUserLocation.latitude))
                 .header("lng", Double.toString(mUserLocation.longitude))
                 .build();
