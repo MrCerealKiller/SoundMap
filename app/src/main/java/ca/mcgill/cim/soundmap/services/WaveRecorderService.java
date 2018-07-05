@@ -5,9 +5,7 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder;
 import android.os.AsyncTask;
-import android.os.SystemClock;
 import android.util.Log;
-import android.widget.Toast;
 
 import java.io.File;
 import java.io.FileOutputStream;
@@ -16,37 +14,37 @@ import java.io.OutputStream;
 import java.io.RandomAccessFile;
 import java.nio.ByteBuffer;
 import java.nio.ByteOrder;
-import java.util.Locale;
 
-public class WaveRecorderService extends AsyncTask<Void, Void, Object[]> {
+import ca.mcgill.cim.soundmap.activities.MappingActivity;
+
+public class WaveRecorderService extends AsyncTask<Void, Void, Void> {
 
     private static final String TAG = "WaveRecorderService";
 
     private static final int AUDIO_SOURCE = MediaRecorder.AudioSource.VOICE_RECOGNITION;
     private static final int AUDIO_ENCODING = AudioFormat.ENCODING_PCM_16BIT;
     private static final int AUDIO_CHANNEL = AudioFormat.CHANNEL_IN_STEREO;
-    private static final int SAMPLE_RATE = 44100; // Hz
-    private static final int MAX_FILE_SIZE = 31457280; // Bytes
+    private static final int SAMPLE_RATE = 44100;      // Hz
+    private static final int MAX_FILE_SIZE = 31457280; // 30 Mb
 
-    private static final int BUFFER_SIZE = 2 * AudioRecord.getMinBufferSize(SAMPLE_RATE, AUDIO_CHANNEL, AUDIO_ENCODING);
+    private static final int BUFFER_SIZE = 2 * AudioRecord.getMinBufferSize(SAMPLE_RATE,
+            AUDIO_CHANNEL, AUDIO_ENCODING);
 
-    private Context mContext;
+    private MappingActivity mCalledFrom;
     private String mFilename;
     private File mFile;
+    private boolean mIsStopped = false;
 
-    private WaveRecorderService(Context context, String filename) {
-        mContext = context;
+    private WaveRecorderService(MappingActivity calledFrom, String filename) {
+        mCalledFrom = calledFrom;
         mFilename = filename;
         mFile = new File(mFilename);
     }
 
     @Override
-    protected Object[] doInBackground(Void... params) {
+    protected Void doInBackground(Void... params) {
         AudioRecord audioRecord = null;
         FileOutputStream audioStream = null;
-
-        long startTime = 0;
-        long endTime = 0;
 
         try {
             // Open our two resources
@@ -58,38 +56,37 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Object[]> {
 
             audioStream = new FileOutputStream(mFilename);
 
-            // Write out the wav file header
+            // Write Header -----------------------------------------------------------------------
             writeWavHeader(audioStream);
 
-            // Avoiding loop allocations
             byte[] buffer = new byte[BUFFER_SIZE];
-            boolean run = true;
-            int read;
+
+            int in;
             long total = 0;
 
-            startTime = SystemClock.elapsedRealtime();
+            // Recording --------------------------------------------------------------------------
+            boolean isRunning = true;
             audioRecord.startRecording();
-            while (run && !isCancelled()) {
-                read = audioRecord.read(buffer, 0, buffer.length);
+            while (isRunning && !mIsStopped && !isCancelled()) {
+                in = audioRecord.read(buffer, 0, buffer.length);
 
-                if (total + read > MAX_FILE_SIZE) {
-                    for (int i = 0; i < read && total <= MAX_FILE_SIZE; i++, total++) {
-                        audioStream.write(buffer[i]);
-                    }
-                    run = false;
+                // Assuming Small max file size, this is fine
+                if (total + in > MAX_FILE_SIZE) {
+                    audioStream.write(buffer, 0, in);
+                    isRunning = false;
                 } else {
-                    audioStream.write(buffer, 0, read);
-                    total += read;
+                    audioStream.write(buffer, 0, in);
+                    total += in;
                 }
             }
         } catch (IOException e) {
             Log.e(TAG, "doInBackground: Error -" + e.toString());
         } finally {
+            // Stop Recording ---------------------------------------------------------------------
             if (audioRecord != null) {
                 try {
                     if (audioRecord.getRecordingState() == AudioRecord.RECORDSTATE_RECORDING) {
                         audioRecord.stop();
-                        endTime = SystemClock.elapsedRealtime();
                     }
                 } catch (IllegalStateException e) {
                     Log.e(TAG, "doInBackground: Error - " + e.toString());
@@ -107,20 +104,21 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Object[]> {
             }
         }
 
+        // Update Header --------------------------------------------------------------------------
         try {
-            // This is not put in the try/catch/finally above since it needs to run
-            // after we close the FileOutputStream
             updateWavHeader(mFile);
-        } catch (IOException ex) {
-            return new Object[] { ex };
+        } catch (IOException e) {
+            Log.e(TAG, "doInBackground: Error - " + e.toString());
         }
+
+        return null;
     }
 
     private static void writeWavHeader(OutputStream out) throws IOException {
         short channels = 2;
         short bitDepth = 16;
 
-        // Convert the multi-byte integers to raw bytes in little endian format as required by the spec
+        // Convert the multi-byte integers to raw bytes in little endian format
         byte[] littleBytes = ByteBuffer
                 .allocate(14)
                 .order(ByteOrder.LITTLE_ENDIAN)
@@ -131,39 +129,36 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Object[]> {
                 .putShort(bitDepth)
                 .array();
 
-        out.write(new byte[]{
-                // RIFF header
-                'R', 'I', 'F', 'F', // ChunkID
-                0, 0, 0, 0, // ChunkSize (must be updated later)
-                'W', 'A', 'V', 'E', // Format
-                // fmt subchunk
-                'f', 'm', 't', ' ', // Subchunk1ID
-                16, 0, 0, 0, // Subchunk1Size
-                1, 0, // AudioFormat
-                littleBytes[0], littleBytes[1], // NumChannels
+        out.write(new byte[] {
+                'R', 'I', 'F', 'F',
+                0, 0, 0, 0, // Updated later
+                'W', 'A', 'V', 'E',
+                'f', 'm', 't', ' ',
+                16, 0, 0, 0,
+                1, 0,
+                littleBytes[0], littleBytes[1],                                 // Channels
                 littleBytes[2], littleBytes[3], littleBytes[4], littleBytes[5], // SampleRate
                 littleBytes[6], littleBytes[7], littleBytes[8], littleBytes[9], // ByteRate
-                littleBytes[10], littleBytes[11], // BlockAlign
-                littleBytes[12], littleBytes[13], // BitsPerSample
-                // data subchunk
-                'd', 'a', 't', 'a', // Subchunk2ID
-                0, 0, 0, 0, // Subchunk2Size (must be updated later)
+                littleBytes[10], littleBytes[11],                               // BlockAlign
+                littleBytes[12], littleBytes[13],                               // BitsPerSample
+                'd', 'a', 't', 'a',
+                0, 0, 0, 0, // Updated later
         });
     }
 
-    private static void updateWavHeader(File wav) throws IOException {
+    private static void updateWavHeader(File file) throws IOException {
         byte[] sizes = ByteBuffer
                 .allocate(8)
                 .order(ByteOrder.LITTLE_ENDIAN)
-                .putInt((int) (wav.length() - 8)) // ChunkSize
-                .putInt((int) (wav.length() - 44)) // Subchunk2Size
+                .putInt((int) (file.length() - 8))  // Bit shift to ChunkSize
+                .putInt((int) (file.length() - 44)) // Bit shift to Subchunk2Size
                 .array();
 
         RandomAccessFile accessWave = null;
 
         //noinspection CaughtExceptionImmediatelyRethrown
         try {
-            accessWave = new RandomAccessFile(wav, "rw");
+            accessWave = new RandomAccessFile(file, "rw");
             // ChunkSize
             accessWave.seek(4);
             accessWave.write(sizes, 0, 4);
@@ -171,9 +166,8 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Object[]> {
             // Subchunk2Size
             accessWave.seek(40);
             accessWave.write(sizes, 4, 4);
-        } catch (IOException ex) {
-            // Rethrow but we still close accessWave in our finally
-            throw ex;
+        } catch (IOException e) {
+            throw e;
         } finally {
             if (accessWave != null) {
                 try {
@@ -186,23 +180,24 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Object[]> {
     }
 
     @Override
-    protected void onCancelled(Object[] results) {
-        // Handling cancellations and successful runs in the same way
-        mIsCancelled = true;
+    protected void onCancelled(Void results) {
         onPostExecute(results);
     }
 
+    public void stop() {
+        mIsStopped = true; // Breaks the doInBackground record loop
+    }
+
     @Override
-    protected void onPostExecute(Object[] results) {
-        if (mContext != null) {
-            if (!(results[0] instanceof Throwable)) {
-                double size = (long) results[0] / 1000000.00;
-                long time = (long) results[1] / 1000;
-                Toast.makeText(mContext, String.format(Locale.getDefault(), "%.2f MB / %d seconds",
-                        size, time), Toast.LENGTH_LONG).show();
-            } else {
-                // Error
-                Toast.makeText(ctx, throwable.getLocalizedMessage(), Toast.LENGTH_LONG).show();
+    protected void onPostExecute(Void results) {
+        // If cancelled delete the file
+        if (!isCancelled()) {
+            try {
+                if (!mFile.delete()) {
+                    throw new Exception("Could not delete sample file on cancel");
+                }
+            } catch (Exception e) {
+                Log.e(TAG, "onPostExecute: Error - " + e.toString());
             }
         }
     }
