@@ -558,27 +558,8 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
 
         new CountDownTimer(RECORDING_LENGTH, RECORDING_CHECK_RATE) {
             private double progress = PROGRESS_RATE;
-            private int unstableCounts = 0;
 
             public void onTick(long millisUntilFinished) {
-                Location target = new Location("target");
-                target.setLatitude(mTarget.getPosition().latitude);
-                target.setLongitude(mTarget.getPosition().longitude);
-
-                Location current = new Location("current");
-                current.setLatitude(mLastKnownCoords.latitude);
-                current.setLongitude(mLastKnownCoords.longitude);
-
-                if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
-                    unstableCounts++;
-                    if (unstableCounts > ALLOWABLE_OUT_OF_RANGE_COUNTS) {
-                        stopRecording();
-                        Toast.makeText(MappingActivity.this, "You have gone out of range",
-                                Toast.LENGTH_SHORT).show();
-                        this.cancel();
-                    }
-                }
-
                 progress += PROGRESS_RATE;
                 mProgressBar.setProgress((int)progress);
             }
