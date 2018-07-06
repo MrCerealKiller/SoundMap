@@ -142,7 +142,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         View focusView = null;
 
         // Check for a valid pin, if the user entered one.
-        if (!TextUtils.isEmpty(pin) && !isPinValid(pin)) {
+        if (TextUtils.isEmpty(pin) || !isPinValid(pin)) {
             mPinView.setError(getString(R.string.error_invalid_pin));
             focusView = mPinView;
             cancel = true;
