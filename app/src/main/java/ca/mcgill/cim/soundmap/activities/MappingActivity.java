@@ -2,6 +2,10 @@ package ca.mcgill.cim.soundmap.activities;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.hardware.Sensor;
+import android.hardware.SensorEvent;
+import android.hardware.SensorEventListener;
+import android.hardware.SensorManager;
 import android.location.Location;
 import android.media.MediaRecorder;
 import android.os.CountDownTimer;
@@ -43,7 +47,7 @@ import ca.mcgill.cim.soundmap.R;
 import ca.mcgill.cim.soundmap.services.FileTransferService;
 import ca.mcgill.cim.soundmap.services.LocationClientService;
 
-public class MappingActivity extends FragmentActivity {
+public class MappingActivity extends FragmentActivity implements SensorEventListener {
 
     // Log Tag
     private static final String TAG = "MappingActivity";
@@ -89,10 +93,19 @@ public class MappingActivity extends FragmentActivity {
     private static final int GPS_TIMEOUT = 60000;               // ms (1 min)
     private static final int ALLOWABLE_OUT_OF_RANGE_COUNTS = 3; // One count occurs per second
 
+    // Compass
+    private SensorManager mSensorManager;
+    private final float[] mAccelerometerReading = new float[3];
+    private final float[] mMagnetometerReading = new float[3];
+    private final float[] mRotationMatrix = new float[9];
+    private final float[] mOrientationAngles = new float[3];
+    private final float RAD_2_DEG_FACT = (float) 57.295779513;
+
     // Mapping
     private GoogleMap mMap;
     private boolean mIsViewInitted = false;
     private Marker mTarget;
+    private Marker mHeadingMarker;
     private static final double DEFAULT_MARKER_OPACITY = 0.9;
     private static final double TARGET_DISTANCE_THRESHOLD = 20; // m
 
@@ -187,10 +200,70 @@ public class MappingActivity extends FragmentActivity {
         getPermissions();
         if (mPermissionGranted && !mMapInitiated) {
             Log.d(TAG, "onCreate: Creating the map");
+            mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
             initMap();
         } else {
+            mSensorManager = null;
             Log.d(TAG, "onCreate: Permission denied or map already initialized");
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        if (mSensorManager == null) {
+            return;
+        }
+
+        // Preserves the battery life by registering and unregistering when not in use
+        mSensorManager.registerListener(this,
+                mSensorManager.getDefaultSensor(Sensor.TYPE_ACCELEROMETER),
+                SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_DELAY_UI);
+        mSensorManager.registerListener(this,
+                mSensorManager.getDefaultSensor(Sensor.TYPE_MAGNETIC_FIELD),
+                SensorManager.SENSOR_DELAY_NORMAL, SensorManager.SENSOR_DELAY_UI);
+    }
+
+    @Override
+    protected void onPause() {
+        super.onPause();
+
+        if (mSensorManager == null) {
+            return;
+        }
+
+        // Preserves the battery life by registering and unregistering when not in use
+        mSensorManager.unregisterListener(this);
+    }
+
+    @Override
+    public void onSensorChanged(SensorEvent event) {
+        if (event.sensor.getType() == Sensor.TYPE_ACCELEROMETER) {
+            System.arraycopy(event.values, 0, mAccelerometerReading,
+                    0, mAccelerometerReading.length);
+        }
+        else if (event.sensor.getType() == Sensor.TYPE_MAGNETIC_FIELD) {
+            System.arraycopy(event.values, 0, mMagnetometerReading,
+                    0, mMagnetometerReading.length);
+        }
+    }
+
+    @Override
+    public void onAccuracyChanged(Sensor sensor, int accuracy) {
+        // Android forces you to implement this method
+    }
+
+    public void updateOrientationAngles() {
+        if (mSensorManager == null) {
+            return;
+        }
+
+        SensorManager.getRotationMatrix(mRotationMatrix, null,
+                mAccelerometerReading, mMagnetometerReading);
+
+        SensorManager.getOrientation(mRotationMatrix, mOrientationAngles);
+        mLastKnownBearing = mOrientationAngles[0] * RAD_2_DEG_FACT;
     }
 
     @Override
@@ -290,7 +363,7 @@ public class MappingActivity extends FragmentActivity {
                             Location location = (Location) task.getResult();
 
                             // Get the bearing and coordinates of the device location
-                            mLastKnownBearing = location.getBearing();
+                            updateOrientationAngles();
                             mLastKnownCoords = new LatLng(location.getLatitude(),
                                                           location.getLongitude());
 
@@ -345,7 +418,19 @@ public class MappingActivity extends FragmentActivity {
                 .zoom(mMap.getCameraPosition().zoom) // Don't override zoom if user changed it
                 .bearing(mMap.getCameraPosition().bearing) // Don't override bearing either
                 .build();
+
+        if (mHeadingMarker != null) {
+            mHeadingMarker.remove();
+        }
+
         mMap.animateCamera(CameraUpdateFactory.newCameraPosition(cameraPosition));
+        mHeadingMarker = mMap.addMarker(new MarkerOptions()
+                .position(mLastKnownCoords)
+                .alpha((float)DEFAULT_MARKER_OPACITY)
+                .rotation(mLastKnownBearing)
+                .draggable(false)
+                .flat(true)
+                .icon(BitmapDescriptorFactory.fromResource(R.mipmap.ic_navigation_large)));
     }
 
     private void requestMarkerUpdate() {
