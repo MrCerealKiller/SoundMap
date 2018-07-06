@@ -3,6 +3,7 @@ package ca.mcgill.cim.soundmap.services;
 import android.location.Address;
 import android.location.Geocoder;
 import android.os.AsyncTask;
+import android.os.SystemClock;
 import android.util.Log;
 import android.util.Pair;
 
@@ -18,7 +19,6 @@ import okhttp3.OkHttpClient;
 import okhttp3.Request;
 import okhttp3.Response;
 
-
 public class LocationClientService extends AsyncTask<Void, Void, Void> {
 
     private static final String TAG = "LocationClientService";
@@ -28,6 +28,8 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
 
     private static final String USERS_HOST_URL =
             "http://sandeepmanjanna.dlinkddns.com:5000/users";
+
+    private static final String SERVER_WAIT_STRING = "Wait";
 
     private MappingActivity mCalledFrom;
     private String mUser;
@@ -86,7 +88,16 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
              */
 
             String res = response.body().string();
-            if (res == null || !res.contains(":") || !res.contains(",")) {
+
+            // If the res is empty, then could not communicate with the server
+            if (res == null) {
+                return null;
+            // If the res indicates "Wait" then sleep the thread and try making the request again
+            } else if (res.equals(SERVER_WAIT_STRING)) {
+                SystemClock.sleep(5000);
+                return getTargetLocation();
+            // If the final res does not contain a ':' or ',' then it is malformed --> server error
+            } else if (!res.contains(":") || !res.contains(",")) {
                 return null;
             }
 
@@ -100,21 +111,23 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
                 try {
                     Double lat = Double.parseDouble(coords[0]);
                     Double lng = Double.parseDouble(coords[1]);
-                    LatLng location;
+                    LatLng location = new LatLng(lat, lng);
 
-                    // Checks for an address at the given location
-                    Geocoder gc = new Geocoder(mCalledFrom.getApplicationContext());
-                    List<Address> address = gc.getFromLocation(lat, lng, 1);
-
-                    // If there is no address at that location, so use the raw target
-                    if (address.isEmpty()) {
-                        location = new LatLng(lat, lng);
-                    // If there is an address, the raw target may be unreachable,
-                    // user the coords of the street address instead of the raw target
-                    } else {
-                        location = new LatLng (address.get(0).getLatitude(),
-                                               address.get(0).getLongitude());
-                    }
+// THIS INTRODUCES SOME UNRELIABILITY TO THE CODE, SO IT IS CURRENTLY NOT IN USE
+//
+//                    // Checks for an address at the given location
+//                    Geocoder gc = new Geocoder(mCalledFrom.getApplicationContext());
+//                    List<Address> address = gc.getFromLocation(lat, lng, 1);
+//
+//                    // If there is no address at that location, so use the raw target
+//                    if (address.isEmpty()) {
+//                        location = new LatLng(lat, lng);
+//                    // If there is an address, the raw target may be unreachable,
+//                    // user the coords of the street address instead of the raw target
+//                    } else {
+//                        location = new LatLng (address.get(0).getLatitude(),
+//                                               address.get(0).getLongitude());
+//                    }
 
                     return new Pair<>(tag, location);
                 } catch (Exception e) {
