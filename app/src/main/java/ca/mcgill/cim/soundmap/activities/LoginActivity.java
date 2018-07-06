@@ -116,15 +116,10 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             pinString += (int) (Math.round(Math.random() * (9.0)));
         }
 
-        Log.d(TAG, "generatePin: Generated Pin: " + pinString);
+        //Log.d(TAG, "generatePin: Generated Pin: " + pinString);
         mGeneratePinButton.setText(pinString);
     }
 
-    /**
-     * Attempts to sign in or register the account specified by the login form.
-     * If there are form errors (invalid email, missing fields, etc.), the
-     * errors are presented and no actual login attempt is made.
-     */
     private void attemptLogin() {
         if (mAuthTask != null) {
             return;
@@ -183,9 +178,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         return matcher.find();
     }
 
-    /**
-     * Shows the progress UI and hides the login form.
-     */
     @TargetApi(Build.VERSION_CODES.HONEYCOMB_MR2)
     private void showProgress(final boolean show) {
         // On Honeycomb MR2 we have the ViewPropertyAnimator APIs, which allow
@@ -232,10 +224,6 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     public void onLoaderReset(Loader<Cursor> cursorLoader) {
     }
 
-    /**
-     * Represents an asynchronous login/registration task used to authenticate
-     * the user.
-     */
     public class UserLoginTask extends AsyncTask<Void, Void, Boolean> {
 
         private final String mEmail;

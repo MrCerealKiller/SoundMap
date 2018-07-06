@@ -91,7 +91,6 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
     private LatLng mLastKnownCoords = mDefaultLocation;
     private long mLastFix;
     private static final int GPS_TIMEOUT = 60000;               // ms (1 min)
-    private static final int ALLOWABLE_OUT_OF_RANGE_COUNTS = 3; // One count occurs per second
 
     // Compass
     private SensorManager mSensorManager;
@@ -138,7 +137,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_mapping);
 
-        Log.d(TAG, "onCreate: Initializing the mapping activity");
+        //Log.d(TAG, "onCreate: Initializing the mapping activity");
 
         // Get user from landing page
         Bundle extras = getIntent().getExtras();
@@ -147,12 +146,12 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
         } else {
             mUser = "anon";
         }
-        Log.d(TAG, "onCreate: User identified as: " + mUser);
+        //Log.d(TAG, "onCreate: User identified as: " + mUser);
 
         try {
             mPathToFile = getExternalCacheDir().getAbsolutePath();
         } catch (NullPointerException e) {
-            Log.e(TAG, "onCreate: Error - " + e.toString());
+            //Log.e(TAG, "onCreate: Error - " + e.toString());
             return;
         }
 
@@ -194,17 +193,17 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
         mProgressBar = (ProgressBar) findViewById(R.id.rec_progress);
         mErrorMessage = (TextView) findViewById(R.id.error_text);
 
-        Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
+        //Log.d(TAG, "onCreate: Members initialized; checking service compatibility and permissions");
 
         // Get user permissions for Location and Audio Recording
         getPermissions();
         if (mPermissionGranted && !mMapInitiated) {
-            Log.d(TAG, "onCreate: Creating the map");
+            //Log.d(TAG, "onCreate: Creating the map");
             mSensorManager = (SensorManager) getSystemService(SENSOR_SERVICE);
             initMap();
         } else {
             mSensorManager = null;
-            Log.d(TAG, "onCreate: Permission denied or map already initialized");
+            //Log.d(TAG, "onCreate: Permission denied or map already initialized");
         }
     }
 
@@ -270,7 +269,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
     public void onWindowFocusChanged(boolean hasFocus){
         super.onWindowFocusChanged(hasFocus);
         mVolumeBarMaxHeight = findViewById(R.id.map).getHeight();
-        Log.d(TAG, "onWindowFocusChanged: Height: " + Integer.toString(mVolumeBarMaxHeight));
+        //Log.d(TAG, "onWindowFocusChanged: Height: " + Integer.toString(mVolumeBarMaxHeight));
     }
 
     private void initMap() {
@@ -278,12 +277,12 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
                 .findFragmentById(R.id.map);
 
         // Callback for when the Google Maps API becomes available
-        Log.d(TAG, "initMap: Created fragment; waiting for response from API");
+        //Log.d(TAG, "initMap: Created fragment; waiting for response from API");
         mapFragment.getMapAsync(new OnMapReadyCallback() {
             @Override
             public void onMapReady(GoogleMap googleMap) {
                 if (mPermissionGranted) {
-                    Log.d(TAG, "onMapReady: API is available and permission is granted");
+                    //Log.d(TAG, "onMapReady: API is available and permission is granted");
 
                     mMap = googleMap;
 
@@ -315,7 +314,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
                     mMap.setBuildingsEnabled(false);
                     mMap.setIndoorEnabled(false);
 
-                    Log.d(TAG, "onMapReady: Map created and flags set; Enabling location services");
+                    //Log.d(TAG, "onMapReady: Map created and flags set; Enabling location services");
 
                     // Recheck Permissions because android is ... thorough.
                     if (ActivityCompat.checkSelfPermission(getApplicationContext(),
@@ -331,7 +330,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
                     mLastFix = System.currentTimeMillis();
                     getCurrentLocation();
 
-                    Log.d(TAG, "onMapReady: Location services enabled; Starting refresh timer");
+                    //Log.d(TAG, "onMapReady: Location services enabled; Starting refresh timer");
 
                     // Start a timer to continuously update the location
                     mLocationUpdateTimer.schedule(new GetLocationTask(), 0, LOCATION_UPDATE_RATE);
@@ -378,12 +377,12 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
 
                         } else {
                             // Could not get a proper GPS fix
-                            Log.d(TAG, "onComplete: GPS signal unavailable");
+                            //Log.d(TAG, "onComplete: GPS signal unavailable");
                             Toast.makeText(MappingActivity.this, "GPS signal unavailable",
                                     Toast.LENGTH_SHORT).show();
 
                             if (Math.abs(now - mLastFix) > GPS_TIMEOUT) {
-                                Log.d(TAG, "onComplete: GPS timed out");
+                                //Log.d(TAG, "onComplete: GPS timed out");
                                 mIsTimeout = true;
                             }
                         }
@@ -391,7 +390,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
                 });
             }
         } catch (SecurityException e) {
-            Log.e(TAG, "getLocation: " + e.toString());
+            //Log.e(TAG, "getLocation: " + e.toString());
         }
     }
 
@@ -491,7 +490,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
 
     private void recordButtonClicked() {
         // Grab the recording status button to switch it on and off
-        Log.d(TAG, "recordButtonClicked: clicked");
+        //Log.d(TAG, "recordButtonClicked: clicked");
 
         if (mIsRecording) {
             Toast.makeText(this, "Please wait for the recording to finish",
@@ -513,7 +512,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
             current.setLongitude(mLastKnownCoords.longitude);
 
             if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
-                Log.d(TAG, "startRecording: Attempted to record, but out of range");
+                //Log.d(TAG, "startRecording: Attempted to record, but out of range");
                 Toast.makeText(MappingActivity.this, "You are not close enough to the target",
                         Toast.LENGTH_SHORT).show();
                 return;
@@ -524,7 +523,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
             mIsStartedTask = true;
         }
 
-        Log.d(TAG, "recordButtonClicked: Recording ON");
+        //Log.d(TAG, "recordButtonClicked: Recording ON");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
         ImageButton button = (ImageButton) findViewById(R.id.rec_button);
 
@@ -548,7 +547,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
         } catch (IOException e) {
             Toast.makeText(this, "Could not access mic. \n Make sure it is not" +
                     "being used by another process.", Toast.LENGTH_SHORT).show();
-            Log.e(TAG, "recordButtonClicked: Error - " + e.toString());
+            //Log.e(TAG, "recordButtonClicked: Error - " + e.toString());
             return;
         }
 
@@ -578,7 +577,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
     }
 
     private void stopRecording() {
-        Log.d(TAG, "recordButtonClicked: Recording OFF");
+        //Log.d(TAG, "recordButtonClicked: Recording OFF");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
         ImageButton button = (ImageButton) findViewById(R.id.rec_button);
 
@@ -593,8 +592,8 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
                 mAudioSampler.stop();
             } catch (Exception e) {
                 // Really unstable... Can throw an error if called to soon after instantiation...
-                Log.e(TAG, "stopRecording: Error trying to stop media recorder.\n\tError - " +
-                        e.toString());
+                //Log.e(TAG, "stopRecording: Error trying to stop media recorder.\n\tError - " +
+                        //e.toString());
             }
             mAudioSampler.release();
             mAudioSampler = null;
@@ -622,7 +621,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
 
     private void uploadRecording() {
         if (mSampleFile == null || mSampleFile.trim().equals("")) {
-            Log.w(TAG, "uploadRecording: Could not find an appropriate source file path");
+            //Log.w(TAG, "uploadRecording: Could not find an appropriate source file path");
             return;
         }
 
@@ -686,7 +685,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
             if (ContextCompat.checkSelfPermission(this.getApplicationContext(),
                     permission) != PackageManager.PERMISSION_GRANTED) {
                 denied = true;
-                Log.w(TAG, "getPermissions: Permissions Not Yet Granted");
+                //Log.w(TAG, "getPermissions: Permissions Not Yet Granted");
                 break;
             }
         }
@@ -719,7 +718,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
             // If any of the permissions were not granted nothing will proceed without the
             // permission granted flag
             if (denied) {
-                Log.w(TAG, "getPermissions: Permissions Denied");
+                //Log.w(TAG, "getPermissions: Permissions Denied");
                 Toast.makeText(this, "Permissions were not granted. The app will not proceed",
                         Toast.LENGTH_LONG).show();
             } else {

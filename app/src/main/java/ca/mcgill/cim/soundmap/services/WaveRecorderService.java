@@ -79,7 +79,7 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Void> {
                 }
             }
         } catch (IOException e) {
-            Log.e(TAG, "doInBackground: Error -" + e.toString());
+            //Log.e(TAG, "doInBackground: Error -" + e.toString());
         } finally {
             // Stop Recording ---------------------------------------------------------------------
             if (audioRecord != null) {
@@ -88,7 +88,7 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Void> {
                         audioRecord.stop();
                     }
                 } catch (IllegalStateException e) {
-                    Log.e(TAG, "doInBackground: Error - " + e.toString());
+                    //Log.e(TAG, "doInBackground: Error - " + e.toString());
                 }
                 if (audioRecord.getState() == AudioRecord.STATE_INITIALIZED) {
                     audioRecord.release();
@@ -98,7 +98,7 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Void> {
                 try {
                     audioStream.close();
                 } catch (IOException e) {
-                    Log.e(TAG, "doInBackground: Error - " + e.toString());
+                    //Log.e(TAG, "doInBackground: Error - " + e.toString());
                 }
             }
         }
@@ -107,7 +107,7 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Void> {
         try {
             updateWavHeader(mFile);
         } catch (IOException e) {
-            Log.e(TAG, "doInBackground: Error - " + e.toString());
+            //Log.e(TAG, "doInBackground: Error - " + e.toString());
         }
 
         return null;
@@ -196,7 +196,7 @@ public class WaveRecorderService extends AsyncTask<Void, Void, Void> {
                     throw new Exception("Could not delete sample file on cancel");
                 }
             } catch (Exception e) {
-                Log.e(TAG, "onPostExecute: Error - " + e.toString());
+                //Log.e(TAG, "onPostExecute: Error - " + e.toString());
             }
         }
     }

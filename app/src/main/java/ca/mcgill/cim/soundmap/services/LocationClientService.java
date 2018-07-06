@@ -36,7 +36,7 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
     private LatLng mUserLocation;
 
     public LocationClientService(MappingActivity calledFrom, String user, LatLng userLocation) {
-        Log.d(TAG, "LocationClientService: Starting Location Client Service");
+        //Log.d(TAG, "LocationClientService: Starting Location Client Service");
 
         mCalledFrom = calledFrom;
         mUser = user;
@@ -79,7 +79,7 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
 
         // Post the Request using the OkHttp Client
         try {
-            Log.d(TAG, "getTargetLocation: attempting get request to server");
+            //Log.d(TAG, "getTargetLocation: attempting get request to server");
             Response response = client.newCall(request).execute();
 
             /**
@@ -131,16 +131,16 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
 
                     return new Pair<>(tag, location);
                 } catch (Exception e) {
-                    Log.e(TAG, "getTargetLocation: Could not parse coordinates");
+                    //Log.e(TAG, "getTargetLocation: Could not parse coordinates");
                     return null;
                 }
             } else {
-                Log.e(TAG, "getTargetLocation: Could not parse coordinates");
+                //Log.e(TAG, "getTargetLocation: Could not parse coordinates");
                 return null;
             }
         } catch (IOException e) {
-            Log.e(TAG, "getTargetLocation: DID NOT USE SERVER LOCATION");
-            Log.e(TAG, "uploadFile: Error - " + e.getMessage());
+            //Log.e(TAG, "getTargetLocation: DID NOT USE SERVER LOCATION");
+            //Log.e(TAG, "uploadFile: Error - " + e.getMessage());
             return null;
         }
     }
@@ -164,7 +164,7 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
 
         // Post the Request using the OkHttp Client
         try {
-            Log.d(TAG, "getOtherUsers: attempting get request to server");
+            //Log.d(TAG, "getOtherUsers: attempting get request to server");
             Response response = client.newCall(request).execute();
 
             /**
@@ -193,13 +193,13 @@ public class LocationClientService extends AsyncTask<Void, Void, Void> {
                         LatLng location = new LatLng(lat, lng);
                         result.add(new Pair<>(name, location));
                     } catch (Exception e) {
-                        Log.e(TAG, "getOtherUsers: Could not parse user coordintates. Skipping...");
+                        //Log.e(TAG, "getOtherUsers: Could not parse user coordintates. Skipping...");
                     }
                 }
             }
         } catch (IOException e) {
-            Log.e(TAG, "getTargetLocation: DID NOT USE SERVER LOCATION");
-            Log.e(TAG, "uploadFile: Error - " + e.getMessage());
+            //Log.e(TAG, "getTargetLocation: DID NOT USE SERVER LOCATION");
+            //Log.e(TAG, "uploadFile: Error - " + e.getMessage());
         }
         
         return result;

@@ -26,7 +26,7 @@ public class FileTransferService extends AsyncTask<Void, Integer, String> {
     private String mLocation;
 
     public FileTransferService(String sampleFile, String user, LatLng location) {
-        Log.d(TAG, "FileTransferService: Starting the file transfer service");
+        //Log.d(TAG, "FileTransferService: Starting the file transfer service");
         
         mSampleFile = sampleFile;
         mUser = user;
@@ -66,11 +66,11 @@ public class FileTransferService extends AsyncTask<Void, Integer, String> {
 
         // Post the Request using the OkHttp Client
         try {
-            Log.d(TAG, "uploadFile: Attempting to post the request to the server");
+            //Log.d(TAG, "uploadFile: Attempting to post the request to the server");
             Response response = client.newCall(request).execute();
             return response.body().string();
         } catch (IOException e) {
-            Log.e(TAG, "uploadFile: Error - " + e.getMessage());
+            //Log.e(TAG, "uploadFile: Error - " + e.getMessage());
             return "IO Error";
         }
     }

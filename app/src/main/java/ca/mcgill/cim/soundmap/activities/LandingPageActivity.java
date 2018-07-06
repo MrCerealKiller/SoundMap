@@ -50,9 +50,9 @@ public class LandingPageActivity extends AppCompatActivity {
 
         // Check to ensure Google Play Services is active and up-to-date
         if (isServicesAvailable()) {
-            Log.d(TAG, "onCreate: Google Play Services are available");
+            //Log.d(TAG, "onCreate: Google Play Services are available");
         } else {
-            Log.w(TAG, "onCreate: Google Play Services are not available");
+            //Log.w(TAG, "onCreate: Google Play Services are not available");
             startButton.setEnabled(false);
         }
 
@@ -130,21 +130,21 @@ public class LandingPageActivity extends AppCompatActivity {
 
     // Check that the Google Play Services is available and compatible
     private boolean isServicesAvailable() {
-        Log.d(TAG, "isServicesAvailable: Verifying version and connectivity");
+        //Log.d(TAG, "isServicesAvailable: Verifying version and connectivity");
         int available = GoogleApiAvailability.getInstance()
                 .isGooglePlayServicesAvailable(LandingPageActivity.this);
 
         if (available == ConnectionResult.SUCCESS) {
-            Log.d(TAG, "isServicesAvailable: Google Play Services successfully connected.");
+            //Log.d(TAG, "isServicesAvailable: Google Play Services successfully connected.");
             return true;
         } else if (GoogleApiAvailability.getInstance().isUserResolvableError(available)) {
-            Log.d(TAG, "isServicesAvailable: An error occurred, but can be resolved by the user");
+            //Log.d(TAG, "isServicesAvailable: An error occurred, but can be resolved by the user");
             Dialog dialog = GoogleApiAvailability.getInstance()
                     .getErrorDialog(LandingPageActivity.this, available, ERROR_DIALOG_REQUEST);
             dialog.show();
             return false;
         } else {
-            Log.d(TAG, "isServicesAvailable: An unresolvable error occurred");
+            //Log.d(TAG, "isServicesAvailable: An unresolvable error occurred");
             Toast.makeText(this, "An unresolvable error occurred with Google Play Services",
                     Toast.LENGTH_LONG).show();
             return false;
