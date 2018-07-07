@@ -6,7 +6,7 @@
     <string name="title_activity_login">SoundMap</string>
 
     <!-- Strings related to login -->
-    <string name="prompt_email">Email</string>
+    <string name="prompt_email">Username or Email</string>
     <string name="prompt_password">4-Digit Pin</string>
     <string name="action_sign_in">Sign in or register</string>
     <string name="action_sign_in_short">Sign in</string>
@@ -23,5 +23,49 @@
     <string name="start_mapping_button">Start Mapping</string>
     <string name="lorem_ipsum">Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Vestibulum lectus mauris ultrices eros. Lobortis feugiat vivamus at augue eget arcu. Non blandit massa enim nec dui nunc mattis enim ut. Lobortis elementum nibh tellus molestie nunc. Urna nunc id cursus metus aliquam eleifend mi. Malesuada bibendum arcu vitae elementum curabitur vitae. Quisque sagittis purus sit amet volutpat consequat mauris nunc. Velit aliquet sagittis id consectetur purus ut faucibus pulvinar. Quis ipsum suspendisse ultrices gravida dictum fusce. Porttitor eget dolor morbi non arcu risus quis varius quam. Cursus vitae congue mauris rhoncus aenean vel. Dui nunc mattis enim ut tellus elementum sagittis vitae. Lectus mauris ultrices eros in cursus turpis massa tincidunt. Vestibulum rhoncus est pellentesque elit. Nulla aliquet enim tortor at auctor urna. Viverra tellus in hac habitasse platea. Nunc consequat interdum varius sit. Non curabitur gravida arcu ac tortor dignissim. Quisque id diam vel quam elementum. Consequat id porta nibh venenatis cras sed felis eget. Quis varius quam quisque id diam vel quam elementum. Risus ultricies tristique nulla aliquet enim tortor at auctor urna. Lacus sed turpis tincidunt id aliquet risus feugiat in ante. Massa tempor nec feugiat nisl pretium fusce id. Facilisi etiam dignissim diam quis. Ac felis donec et odio. Augue eget arcu dictum varius. Eu facilisis sed odio morbi quis commodo odio aenean sed. Hac habitasse platea dictumst vestibulum rhoncus est. Arcu felis bibendum ut tristique. Proin gravida hendrerit lectus a. Semper eget duis at tellus. Pretium fusce id velit ut tortor pretium viverra suspendisse. Faucibus vitae aliquet nec ullamcorper sit amet risus. Vulputate mi sit amet mauris. Amet volutpat consequat mauris nunc congue nisi vitae suscipit tellus. Lacus vestibulum sed arcu non odio. Sapien faucibus et molestie ac feugiat sed. Nulla porttitor massa id neque aliquam vestibulum. Orci phasellus egestas tellus rutrum tellus. Nunc lobortis mattis aliquam faucibus purus. Feugiat pretium nibh ipsum consequat nisl vel pretium lectus. Magna eget est lorem ipsum. Nunc sed velit dignissim sodales ut eu. Turpis egestas maecenas pharetra convallis posuere morbi leo urna molestie. Pellentesque elit eget gravida cum sociis natoque. Ultrices gravida dictum fusce ut placerat orci nulla. Congue nisi vitae suscipit tellus mauris a. Aliquet risus feugiat in ante metus. Egestas integer eget aliquet nibh praesent. Elementum nisi quis eleifend quam adipiscing. Metus dictum at tempor commodo ullamcorper a lacus vestibulum. Laoreet suspendisse interdum consectetur libero id faucibus nisl tincidunt. Amet porttitor eget dolor morbi non arcu risus quis varius. Risus nullam eget felis eget nunc. Orci phasellus egestas tellus rutrum tellus pellentesque eu tincidunt. Ullamcorper a lacus vestibulum sed arcu. Sit amet aliquam id diam maecenas ultricies. Purus sit amet luctus venenatis lectus magna fringilla urna. Nunc pulvinar sapien et ligula ullamcorper malesuada proin. Dui nunc mattis enim ut tellus elementum sagittis vitae. Eu scelerisque felis imperdiet proin fermentum. Scelerisque purus semper eget duis at tellus. Pulvinar neque laoreet suspendisse interdum consectetur libero id faucibus. Ut aliquam purus sit amet luctus venenatis lectus magna. Erat pellentesque adipiscing commodo elit at imperdiet dui. Risus nec feugiat in fermentum posuere. Fermentum leo vel orci porta non. Amet commodo nulla facilisi nullam. Dictum non consectetur a erat. Cursus in hac habitasse platea dictumst quisque sagittis purus. Ipsum dolor sit amet consectetur adipiscing elit. Nisl purus in mollis nunc sed.</string>
     <string name="rec_button">START REC</string>
-    <string name="server_connection_error">Unable to communicate with the server.</string>
+    <string name="server_connection_error">Server Error.\n\nTry again by pressing back and restarting the map.</string>
+    <string name="logo">Logo</string>
+    <string name="instructions_banner">To start mapping,\n please hit record for the first time.</string>
+    <string name="instructions">
+        \n1. To begin mapping, simply press the button below.
+        \n
+        \n2. When ready, press the record button near the bottom of the screen to take the first sample
+        \n
+        \n3. The application will then record for 30 seconds, during which time, you should stay in the vicinity of when you clicked the button (an indicator will appear)
+        \n
+        \n4. After the recording is uploaded the server will process the file and eventually send you a new target. Approach this target until you are in it\'s vicinity, and you can once again press the record button.
+        \n
+        \n5. Keep repeating 3 and 4 to build a map on the Sound Map server! Thank you for helping out.
+        \n
+        \nNote: You can enter debug mode by clicking the \'Rec\' badge in the lower right-hand corner. This will lift some of the process checks, such as being within the vicinity of the target, and reveals a numerical indication if audio.
+    </string>
+    <string name="eula">
+        \nEND USER LICENSE FOR ANDROID SOUNDMAP SOFTWARE
+        \n
+        \nPLEASE READ THIS DOCUMENT CAREFULLY BEFORE USING THIS SOFTWARE.
+        \nTHIS LICENSE PROVIDES IMPORTANT INFORMATION CONCERNING THE SOFTWARE, PROVIDES YOU WITH A LICENSE TO USE THE SOFTWARE AND CONTAINS WARRANTY AND LIABILITY INFORMATION.
+        \nBY USING THE SOFTWARE, YOU ARE ACCEPTING THE SOFTWARE "AS IS" AND AGREEING TO BE BOUND BY THE TERMS OF THIS LICENSE AGREEMENT.
+        \nIN NO EVENT WILL THE AUTHORS BE HELD LIABLE FOR ANY DAMAGES ARISING FROM THE USE OF THIS SOFTWARE.
+        \n
+        \n1. Terms of License
+        \nThis license allows you to:
+        \n(a) use the Software on a single device; and
+        \n(b) if you wish to use the Software on more than one device, you must license another copy of the Software.
+        \n
+        \n2. Restrictions on Use
+        \nUnless the Sound Map Creators have authorized you to distribute the Software, you shall not make or distribute copies of the Software or transfer the Software from one device to another. You shall not decompile, reverse engineer, disassemble, include in other software, or translate the Software, or use the Software for any commercial purposes. You shall not modify, alter, change or otherwise make any modification to the Software or create derivative works based upon the Software. You shall not rent, lease, resell, sub-license, assign, distribute or otherwise transfer the Software or this license. Any attempt to do so shall be void and of no effect.
+        \n
+        \n3. Ownership
+        \nThis license provides you with limited rights to use the Software. The Owner retains all ownership, right, title and interest in, to and of the Software and all copies of it. All rights not specifically granted in this license, including domestic and international copyrights, are reserved by the Owner.
+        \n
+        \n4. Proprietary Markings
+        \nThe Owner\'s logos, product names, manuals, documentation, and other support materials are either patented, copyrighted, trademarked, constitute valuable trade secrets (whether or not any portion of them may be copyrighted or patented) or are otherwise proprietary to the Owner. You shall not remove or obscure the Owner\'s copyright, trade mark or other proprietary notices from any of the materials contained in this package or downloaded together with the Software.
+        \n
+        \n5. Disclaimer of Warranties and Technical Support
+        \nThe Software is provided to you on an "AS IS" basis, without any technical support or warranty of any kind including, without limitation, any warranty or condition of merchantability, fitness for a particular purpose and non-infringement.
+        \n
+        \n6. SoundMap will record audio samples with regular use. The authors are not liable for privacy infringements made by the end-user. Please use the software responsibility and only record samples with the consent of those around you.
+        \n
+        \nSOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED WARRANTIES, SO THE ABOVE EXCLUSION MAY NOT APPLY TO YOU. YOU MAY ALSO HAVE OTHER LEGAL RIGHTS WHICH VARY FROM JURISDICTION TO JURISDICTION.
+    </string>
 </resources>

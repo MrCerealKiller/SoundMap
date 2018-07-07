@@ -1,10 +1,12 @@
-package ca.mcgill.cim.soundmap;
+package ca.mcgill.cim.soundmap.fragments;
 
 import android.os.Bundle;
 import android.support.v4.app.Fragment;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
+
+import ca.mcgill.cim.soundmap.R;
 
 public class TermsFragment extends Fragment{
 
