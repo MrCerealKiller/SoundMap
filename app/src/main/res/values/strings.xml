@@ -68,4 +68,5 @@
         \n
         \nSOME JURISDICTIONS DO NOT ALLOW THE EXCLUSION OF IMPLIED WARRANTIES, SO THE ABOVE EXCLUSION MAY NOT APPLY TO YOU. YOU MAY ALSO HAVE OTHER LEGAL RIGHTS WHICH VARY FROM JURISDICTION TO JURISDICTION.
     </string>
+    <string name="no_target_wait_msg">You have not yet been assigned a new target. Please wait for the server\'s response</string>
 </resources>

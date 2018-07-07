@@ -504,18 +504,23 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
     private void startRecording() {
         // Check once before attempting to start recording...
         if (mIsStartedTask) {
-            Location target = new Location("target");
-            target.setLatitude(mTarget.getPosition().latitude);
-            target.setLongitude(mTarget.getPosition().longitude);
+            if (mTarget != null) {
+                Location target = new Location("target");
+                target.setLatitude(mTarget.getPosition().latitude);
+                target.setLongitude(mTarget.getPosition().longitude);
 
-            Location current = new Location("current");
-            current.setLatitude(mLastKnownCoords.latitude);
-            current.setLongitude(mLastKnownCoords.longitude);
+                Location current = new Location("current");
+                current.setLatitude(mLastKnownCoords.latitude);
+                current.setLongitude(mLastKnownCoords.longitude);
 
-            if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
-                //Log.d(TAG, "startRecording: Attempted to record, but out of range");
-                Toast.makeText(MappingActivity.this, "You are not close enough to the target",
-                        Toast.LENGTH_SHORT).show();
+                if ((current.distanceTo(target) > TARGET_DISTANCE_THRESHOLD) && !mIsDebugging) {
+                    //Log.d(TAG, "startRecording: Attempted to record, but out of range");
+                    Toast.makeText(MappingActivity.this, "You are not close enough to the target",
+                            Toast.LENGTH_SHORT).show();
+                    return;
+                }
+            } else {
+                Toast.makeText(this, R.string.no_target_wait_msg, Toast.LENGTH_SHORT).show();
                 return;
             }
         } else {
@@ -581,6 +586,8 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
         if (mIsDebugging) {
             toggleDebug();
         }
+
+        mTarget = null;
 
         //Log.d(TAG, "recordButtonClicked: Recording OFF");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
