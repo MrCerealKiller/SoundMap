@@ -28,7 +28,10 @@ dependencies {
 
     compile 'com.android.support:appcompat-v7:25.3.1'
     compile 'com.android.support:design:25.3.1'
-    compile 'com.google.android.gms:play-services:11.0.4' // Google Play Services (Maps)
+    compile 'com.google.android.gms:play-services-maps:11.0.4'
+    compile 'com.google.android.gms:play-services-places:11.0.4'
+    compile 'com.google.android.gms:play-services-base:11.0.4'
+    compile 'com.google.android.gms:play-services-location:11.0.4'
 
     // OkHttp Library
     compile 'com.squareup.okio:okio:1.14.1'

@@ -126,7 +126,6 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
     private int mVolumeBarMaxHeight;
     private int mVolumeBarSetpoint;
     private TextView mVolumeText;
-    private boolean mIsTextVisible = false;
 
     // Misc UI Elements
     private TextView mErrorMessage;
@@ -175,15 +174,7 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
         recBadge.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                if (mIsTextVisible) {
-                    mVolumeText.setVisibility(View.GONE);
-                    mIsTextVisible = false;
-                    mIsDebugging = false;
-                } else {
-                    mVolumeText.setVisibility(View.VISIBLE);
-                    mIsTextVisible = true;
-                    mIsDebugging = true;
-                }
+                toggleDebug();
             }
         });
 
@@ -204,6 +195,16 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
         } else {
             mSensorManager = null;
             //Log.d(TAG, "onCreate: Permission denied or map already initialized");
+        }
+    }
+
+    private void toggleDebug() {
+        if (mIsDebugging) {
+            mVolumeText.setVisibility(View.GONE);
+            mIsDebugging = false;
+        } else {
+            mVolumeText.setVisibility(View.VISIBLE);
+            mIsDebugging = true;
         }
     }
 
@@ -577,6 +578,10 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
     }
 
     private void stopRecording() {
+        if (mIsDebugging) {
+            toggleDebug();
+        }
+
         //Log.d(TAG, "recordButtonClicked: Recording OFF");
         ImageButton status = (ImageButton) findViewById(R.id.rec_badge);
         ImageButton button = (ImageButton) findViewById(R.id.rec_button);
