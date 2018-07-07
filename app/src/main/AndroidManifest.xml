@@ -22,13 +22,19 @@
 
         <activity
             android:name=".activities.MappingActivity"
-            android:label="@string/title_activity_mapping" />
+            android:label="@string/title_activity_mapping"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|keyboardHidden" />
 
         <activity
             android:name=".activities.LoginActivity"
-            android:label="@string/title_activity_login" />
+            android:label="@string/title_activity_login"
+            android:screenOrientation="portrait"
+            android:configChanges="orientation|keyboardHidden" />
 
-        <activity android:name=".activities.LandingPageActivity">
+        <activity android:name=".activities.LandingPageActivity"
+                  android:screenOrientation="portrait"
+                  android:configChanges="orientation|keyboardHidden">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
