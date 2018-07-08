@@ -1,6 +1,7 @@
 package ca.mcgill.cim.soundmap.activities;
 
 import android.Manifest;
+import android.content.DialogInterface;
 import android.content.pm.PackageManager;
 import android.hardware.Sensor;
 import android.hardware.SensorEvent;
@@ -14,6 +15,7 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.app.FragmentActivity;
 import android.os.Bundle;
 import android.support.v4.content.ContextCompat;
+import android.support.v7.app.AlertDialog;
 import android.util.Log;
 import android.util.Pair;
 import android.view.View;
@@ -745,9 +747,23 @@ public class MappingActivity extends FragmentActivity implements SensorEventList
 
     @Override
     public void onBackPressed() {
-        if (mIsRecording) {
-            stopRecording();
-        }
-        finish();
+        new AlertDialog.Builder(this)
+                .setTitle(R.string.exit_dialog_title)
+                .setMessage(R.string.exit_dialog_text)
+                .setIcon(android.R.drawable.ic_dialog_alert)
+                .setNegativeButton(android.R.string.no, null)
+                .setPositiveButton(android.R.string.yes, new DialogInterface.OnClickListener() {
+                    public void onClick(DialogInterface dialog, int whichButton) {
+                        if (mIsRecording) {
+                            stopRecording();
+                        }
+                        finish();
+                    }}).show();
+
+
+
+
+
+
     }
 }
